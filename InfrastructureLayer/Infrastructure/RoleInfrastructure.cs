@@ -141,6 +141,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                             RoleId = dataReader.GetIntegerValue(RoleInfrastructure.RoleIdColumnName),
                             RoleName = dataReader.GetStringValue(RoleInfrastructure.RoleNameColumnName),
                             RoleCode = dataReader.GetStringValue(RoleInfrastructure.RoleCodeColumnName),
+                            Active = dataReader.GetBooleanValue(BaseInfrastructure.ActiveColumnName),
                             Description = dataReader.GetStringValue(RoleInfrastructure.DescriptionColumnName)
                         };
 
