@@ -27,11 +27,13 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetAllCodesStoredProcedureName = "[dbo].[sp_Claim_GetAllClaimCodes]";
         private const string GetByRoleStoredProcedureName = "[dbo].[sp_RoleClaims_GetByRole]";
         private const string SetForRoleStoredProcedureName = "[dbo].[sp_RoleClaims_SetForRole]";
-        private const string AddStoredProcedureName = "[dbo].[sp_RoleClaims_Add]";
-        private const string RemoveStoredProcedureName = "[dbo].[sp_RoleClaims_Remove]";
+        private const string GetListStoredProcedureName = "[dbo].[sp_Claim_GetList]";
 
+        private const string ClaimIdColumnName = "ClaimId";
+        private const string ClaimGroupIdColumnName = "ClaimGroupId";
+        private const string EndpointColumnName = "Endpoint";
+        private const string DescriptionColumnName = "Description";
         private const string ClaimCodeColumnName = "ClaimCode";
-
         private const string RoleIdParameterName = "@RoleId";
         private const string ClaimIdParameterName = "@ClaimId";
         private const string ClaimIdsCsvParameterName = "@ClaimIdsCsv";
@@ -133,31 +135,38 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             return rows >= 0; // Some SPs SELECT; ExecuteNonQuery may return 0.
         }
 
-        public async Task<bool> Add(RoleClaims request)
+        public async Task<List<RoleClaims>> GetList(RoleClaims request)
         {
-            var parameters = new List<DbParameter>
-            {
-                GetParameter(RoleIdParameterName, request.RoleId),
-                GetParameter(ClaimIdParameterName, request.ClaimId)
-            };
+            var list = new List<RoleClaims>();
+            var parameters = new List<DbParameter>(); // none needed for full list
 
-            var rowsObj = await ExecuteScalar(parameters, AddStoredProcedureName, CommandType.StoredProcedure);
-            var rows = rowsObj is int i ? i : System.Convert.ToInt32(rowsObj ?? 0);
-            return rows > 0;
+            using (var r = await ExecuteReader(parameters, GetListStoredProcedureName, CommandType.StoredProcedure))
+            {
+                if (r != null)
+                {
+                    while (r.Read())
+                    {
+                        list.Add(new RoleClaims
+                        {
+
+                            ClaimId = r.GetIntegerValue(ClaimIdColumnName),
+                            ClaimCode = r.GetStringValue(ClaimCodeColumnName),
+                            Endpoint = r.GetStringValue(EndpointColumnName),
+                            Description = r.GetStringValue(DescriptionColumnName),
+
+                        });
+                    }
+
+                    if (!r.IsClosed)
+                        r.Close();
+                }
+            }
+
+            return list;
         }
 
-        public async Task<bool> Remove(RoleClaims request)
-        {
-            var parameters = new List<DbParameter>
-            {
-                GetParameter(RoleIdParameterName, request.RoleId),
-                GetParameter(ClaimIdParameterName, request.ClaimId)
-            };
 
-            var rowsObj = await ExecuteScalar(parameters, RemoveStoredProcedureName, CommandType.StoredProcedure);
-            var rows = rowsObj is int i ? i : System.Convert.ToInt32(rowsObj ?? 0);
-            return rows > 0;
-        }
+
 
         #endregion
     }

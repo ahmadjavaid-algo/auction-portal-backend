@@ -12,11 +12,13 @@ namespace AuctionPortal.ApplicationLayer.Application
     public class ApplicationUserOperationApplication : BaseApplication, IApplicationUserOperationApplication
     {
         public IApplicationUserOperationInfrastructure ApplicationUserOperationInfrastructure { get; }
+        //public IEmailServiceConnector EmailServiceConnector { get; }
         private readonly ITokenService _tokens;
         private readonly IClaimApplication _claims;
 
         public ApplicationUserOperationApplication(
-            IApplicationUserOperationInfrastructure applicationUserOperationInfrastructure,
+            IApplicationUserOperationInfrastructure applicationUserOperationInfrastructure, 
+            //IEmailServiceConnector emailServiceConnector,
             IClaimApplication claims,
             ITokenService tokens,
             IConfiguration configuration) : base(configuration)
@@ -25,6 +27,7 @@ namespace AuctionPortal.ApplicationLayer.Application
                 ?? throw new ArgumentNullException(nameof(applicationUserOperationInfrastructure));
             _claims = claims ?? throw new ArgumentNullException(nameof(claims));
             _tokens = tokens ?? throw new ArgumentNullException(nameof(tokens));
+            //this.EmailServiceConnector = emailServiceConnector;
         }
 
         #region Queries
@@ -83,6 +86,10 @@ namespace AuctionPortal.ApplicationLayer.Application
 
         public Task<bool> ForgotPassword(ApplicationUserOperation request)
         {
+            //Email email = EmailInfrastructure.Get("CODE_FRGT")
+
+            
+            // EmailServiceConnector.SendEmail(email);
             return ApplicationUserOperationInfrastructure.ForgotPassword(request);
         }
 

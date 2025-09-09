@@ -13,7 +13,7 @@ namespace AuctionPortal.InfrastructureLayer.Interfaces
         // Single-DTO signatures
         Task<List<RoleClaims>> GetByRole(RoleClaims request);
         Task<bool> SetForRole(RoleClaims request);
-        Task<bool> Add(RoleClaims request);
-        Task<bool> Remove(RoleClaims request);
+        Task<List<RoleClaims>> GetList(RoleClaims request);
+
     }
 }

@@ -29,6 +29,10 @@ namespace AuctionPortal.ApplicationLayer.Application
         {
             return await RoleInfrastructure.GetList(entity);
         }
+        public async Task<Role> GetStats()
+        {
+            return await RoleInfrastructure.GetStats();
+        }
         #endregion
 
         #region Commands

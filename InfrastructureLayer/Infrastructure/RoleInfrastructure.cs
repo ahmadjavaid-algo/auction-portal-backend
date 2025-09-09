@@ -25,8 +25,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetStoredProcedureName = "[dbo].[sp_Role_GetById]";
         private const string GetListStoredProcedureName = "[dbo].[sp_Role_GetAll]";
         private const string UpdateStoredProcedureName = "[dbo].[sp_Role_Update]";
+        private const string GetStatsStoredProcedureName = "[dbo].[sp_Role_GetStats]";
 
-        
         private const string RoleIdColumnName = "RoleId";
         private const string RoleNameColumnName = "RoleName";
         private const string RoleCodeColumnName = "RoleCode";
@@ -172,6 +172,25 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
             var rows = await base.ExecuteNonQuery(parameters, RoleInfrastructure.UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
+        }
+        public async Task<Role> GetStats()
+        {
+            var stats = new Role();
+            var parameters = new List<DbParameter>(); // none
+
+            using (var dr = await base.ExecuteReader(parameters, RoleInfrastructure.GetStatsStoredProcedureName, CommandType.StoredProcedure))
+            {
+                if (dr != null && dr.Read())
+                {
+                    stats.TotalRoles = dr.GetIntegerValue("TotalRoles");
+                    stats.ActiveRoles = dr.GetIntegerValue("ActiveRoles");
+                    stats.InactiveRoles = dr.GetIntegerValue("InactiveRoles");
+                }
+
+                if (dr != null && !dr.IsClosed) dr.Close();
+            }
+
+            return stats;
         }
 
         #endregion

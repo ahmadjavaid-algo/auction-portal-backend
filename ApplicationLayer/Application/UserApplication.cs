@@ -24,6 +24,11 @@ namespace AuctionPortal.ApplicationLayer.Application
         {
             return await UserInfrastructure.Get(entity);
         }
+        public async Task<User> GetStats()
+        {
+           return await UserInfrastructure.GetStats(); 
+        }
+       
 
         public async Task<List<User>> GetList(User entity)
         {

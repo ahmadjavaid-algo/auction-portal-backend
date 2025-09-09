@@ -34,17 +34,14 @@ namespace AuctionPortal.Controllers
         {
             return await RoleClaimApplication.SetForRole(request);
         }
-
-        [HttpPost("add")]
-        public async Task<bool> Add([FromBody] RoleClaims request)
+        [HttpGet("list")]
+        public async Task<List<RoleClaims>> GetList([FromQuery] RoleClaims request)
         {
-            return await RoleClaimApplication.Add(request);
+            return await RoleClaimApplication.GetList(request);
         }
 
-        [HttpPost("remove")]
-        public async Task<bool> Remove([FromBody] RoleClaims request)
-        {
-            return await RoleClaimApplication.Remove(request);
-        }
+
+
+
     }
 }

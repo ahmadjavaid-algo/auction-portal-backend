@@ -9,6 +9,6 @@ namespace AuctionPortal.ApplicationLayer.IApplication
     // Inherit from the fully generic base to keep contracts consistent across modules
     public interface IRoleApplication : IBaseApplication<Role, int>
     {
-        // Add role-specific methods here if you ever need any beyond the base contract.
+        Task<Role> GetStats();
     }
 }

@@ -65,5 +65,10 @@ namespace AuctionPortal.Controllers
             var response = await this.UserApplication.GetList(request);
             return response;
         }
+        [HttpGet("getstats")]
+        public async Task<User> GetStats()
+        {
+            return await this.UserApplication.GetStats();
+        }
     }
 }

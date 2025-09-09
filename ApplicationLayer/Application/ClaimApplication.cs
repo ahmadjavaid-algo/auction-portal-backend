@@ -38,15 +38,12 @@ namespace AuctionPortal.ApplicationLayer.Application
         {
             return ClaimInfrastructure.SetForRole(request);
         }
-
-        public Task<bool> Add(RoleClaims request)
+        public Task<List<RoleClaims>> GetList(RoleClaims request)
         {
-            return ClaimInfrastructure.Add(request);
+            return ClaimInfrastructure.GetList(request);
         }
 
-        public Task<bool> Remove(RoleClaims request)
-        {
-            return ClaimInfrastructure.Remove(request);
-        }
+
+
     }
 }

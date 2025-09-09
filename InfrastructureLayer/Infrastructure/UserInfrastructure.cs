@@ -26,7 +26,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetStoredProcedureName = "[dbo].[sp_User_GetById]";
         private const string GetListStoredProcedureName = "[dbo].[sp_User_GetAll]";
         private const string UpdateStoredProcedureName = "[dbo].[sp_User_Update]";
-
+        private const string GetStatsStoredProcedureName = "[dbo].[sp_User_GetStats]";
         // Column names
         private const string UserIdColumnName = "UserId";
         private const string UserNameColumnName = "UserName";
@@ -256,11 +256,34 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             var rows = await base.ExecuteNonQuery(parameters, UserInfrastructure.UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
         }
+        /// <summary>
+        /// Returns Total/Active/Inactive user counts.
+        /// </summary>
+        public async Task<User> GetStats()
+        {
+            var stats = new User();
+            var parameters = new List<DbParameter>(); // none
+
+            using (var dr = await base.ExecuteReader(parameters, UserInfrastructure.GetStatsStoredProcedureName, CommandType.StoredProcedure))
+            {
+                if (dr != null && dr.Read())
+                {
+                    stats.TotalUsers = dr.GetIntegerValue("TotalUsers");
+                    stats.ActiveUsers = dr.GetIntegerValue("ActiveUsers");
+                    stats.InactiveUsers = dr.GetIntegerValue("InactiveUsers");
+                }
+
+                if (dr != null && !dr.IsClosed) dr.Close();
+            }
+
+            return stats;
+        }
+
         private static string? BuildRoleIdsJson(IEnumerable<int>? ids)
         {
-            if (ids == null) return null;               // means: don't touch roles
+            if (ids == null) return null;              
             var arr = ids.Distinct().ToArray();
-            return "[" + string.Join(",", arr) + "]";   // "[]" allowed = clear all
+            return "[" + string.Join(",", arr) + "]";   
         }
 
         #endregion

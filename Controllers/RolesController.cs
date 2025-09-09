@@ -65,5 +65,11 @@ namespace AuctionPortal.Controllers
             List<Role> response = await this.RoleApplication.GetList(request);
             return response;
         }
+        [HttpGet("getstats")]
+        public async Task<Role> GetStats()
+        {
+            var stats = await this.RoleApplication.GetStats();
+            return stats;
+        }
     }
 }

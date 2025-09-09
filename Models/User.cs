@@ -19,8 +19,10 @@ namespace AuctionPortal.Models
         public string? PhoneNumber { get; set; }
         public DateTime? LoginDate { get; set; }
         public string? Code { get; set; }
-        public List<int>? RoleId { get; set; }           
-        
+        public List<int>? RoleId { get; set; }
+        public int TotalUsers { get; set; }
+        public int ActiveUsers { get; set; }
+        public int InactiveUsers { get; set; }
         #endregion
     }
 

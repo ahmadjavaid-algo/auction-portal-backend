@@ -10,6 +10,6 @@ namespace AuctionPortal.ApplicationLayer.IApplication
     // Leverage the fully generic base contract
     public interface IUserApplication : IBaseApplication<User, int>
     {
-
+        Task<User> GetStats();
     }
 }

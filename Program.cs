@@ -62,13 +62,13 @@ builder.Services.AddScoped<IUserInfrastructure, UserInfrastructure>();
 builder.Services.AddScoped<IRoleInfrastructure, RoleInfrastructure>();
 builder.Services.AddScoped<IApplicationUserOperationInfrastructure, ApplicationUserOperationInfrastructure>();
 builder.Services.AddScoped<IClaimInfrastructure, ClaimInfrastructure>();
-
+builder.Services.AddScoped<IEmailsInfrastructure, EmailsInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
 builder.Services.AddScoped<IApplicationUserOperationApplication, ApplicationUserOperationApplication>();
 builder.Services.AddScoped<IClaimApplication, ClaimApplication>();
-
+builder.Services.AddScoped<IEmailsApplication, EmailsApplication>();
 // AuthN / AuthZ
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
