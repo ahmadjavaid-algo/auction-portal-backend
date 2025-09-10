@@ -8,11 +8,7 @@ namespace AuctionPortal.Common.Services
 {
     public interface IEmailServiceConnector
     {
-        /// <summary>
-        /// ❗Deprecated: prefer the overload that takes permissions.
-        /// </summary>
-       public Task<bool> SendEmail(EmailServiceConnector email);
-
-        
+        Task<bool> SendEmail(string to, string subject, string body, string? from = null, bool isHtml = true);
     }
+
 }

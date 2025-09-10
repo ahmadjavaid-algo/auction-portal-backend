@@ -56,6 +56,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IHeaderValue, HeaderValue>();
 builder.Services.AddScoped<IBaseServiceConnector, BaseServiceConnector>();
 builder.Services.AddScoped<ITokenService, TokenService>();
+builder.Services.AddScoped<IEmailServiceConnector, EmailServiceConnector>();
 
 // Infrastructure
 builder.Services.AddScoped<IUserInfrastructure, UserInfrastructure>();
