@@ -25,6 +25,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetStoredProcedureName = "[dbo].[EmailsGet]";
         private const string GetListStoredProcedureName = "[dbo].[EmailsGetAll]";
         private const string UpdateStoredProcedureName = "[dbo].[EmailsUpdate]";
+        private const string GetByCodeStoredProcedureName = "[dbo].[EmailsGetByCode]";
 
         private const string EmailIdColumnName = "EmailId";
         private const string EmailCodeColumnName = "EmailCode";
@@ -166,7 +167,35 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
         }
+        public async Task<Email?> GetByCode(string code)
+        {
+            var parameters = new List<DbParameter>
+            {
+                base.GetParameter(EmailCodeParameterName, code)
+            };
 
+            using var dr = await base.ExecuteReader(parameters, GetByCodeStoredProcedureName, CommandType.StoredProcedure);
+            Email? item = null;
+            if (dr != null && dr.Read())
+            {
+                item = new Email
+                {
+                    EmailId = dr.GetIntegerValue("EmailId"),
+                    EmailCode = dr.GetStringValue("EmailCode"),
+                    EmailSubject = dr.GetStringValue("EmailSubject"),
+                    EmailBody = dr.GetStringValue("EmailBody"),
+                    EmailTo = dr.GetStringValue("EmailTo"),
+                    EmailFrom = dr.GetStringValue("EmailFrom"),
+                    Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName),
+                    CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                    CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                    ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                    ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName)
+                };
+            }
+            if (dr != null && !dr.IsClosed) dr.Close();
+            return item;
+        }
         #endregion
     }
 }

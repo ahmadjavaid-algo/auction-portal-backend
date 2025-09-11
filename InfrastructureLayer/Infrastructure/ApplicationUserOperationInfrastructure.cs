@@ -132,7 +132,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             firstOut
         };
 
-            // Insert of token counts as 1 row when user exists; still "success" either way.
+           
             await base.ExecuteNonQuery(parameters, SpForgotPassword, CommandType.StoredProcedure);
 
             string? token = tokenOut.Value == DBNull.Value ? null : Convert.ToString(tokenOut.Value);
@@ -152,7 +152,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         };
 
             var rows = await base.ExecuteNonQuery(parameters, SpResetPassword, CommandType.StoredProcedure);
-            return rows > 0; // will be 0 if token invalid/expired/not found
+            return rows > 0; 
         }
 
 
