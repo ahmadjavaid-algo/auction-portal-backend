@@ -64,12 +64,16 @@ builder.Services.AddScoped<IRoleInfrastructure, RoleInfrastructure>();
 builder.Services.AddScoped<IApplicationUserOperationInfrastructure, ApplicationUserOperationInfrastructure>();
 builder.Services.AddScoped<IClaimInfrastructure, ClaimInfrastructure>();
 builder.Services.AddScoped<IEmailsInfrastructure, EmailsInfrastructure>();
+builder.Services.AddScoped<IBidderInfrastructure, BidderInfrastructure>();
+builder.Services.AddScoped<IBidderOperationInfrastructure, BidderOperationInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
 builder.Services.AddScoped<IApplicationUserOperationApplication, ApplicationUserOperationApplication>();
 builder.Services.AddScoped<IClaimApplication, ClaimApplication>();
 builder.Services.AddScoped<IEmailsApplication, EmailsApplication>();
+builder.Services.AddScoped<IBidderApplication, BidderApplication>();
+builder.Services.AddScoped<IBidderOperationApplication, BidderOperationApplication>();
 // AuthN / AuthZ
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
