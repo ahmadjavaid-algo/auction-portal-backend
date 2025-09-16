@@ -93,8 +93,8 @@ namespace AuctionPortal.ApplicationLayer.Application
 
             if (!string.IsNullOrWhiteSpace(res.Token))
             {
-                var uiBase = Configuration["Client:BaseUrl"] ?? "http://localhost:4200";
-                var resetPath = Configuration["Client:ResetPath"] ?? "/admin/auth/reset-password";
+                var uiBase = Configuration["Clientbidder:BaseUrl"] ?? "http://localhost:4200";
+                var resetPath = Configuration["Clientbidder:ResetPath"] ?? "/bidder/auth/reset-password";
 
                 // Ensure exactly one slash between base and path
                 var basePart = uiBase.TrimEnd('/');
