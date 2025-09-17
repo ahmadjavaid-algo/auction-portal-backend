@@ -66,6 +66,10 @@ builder.Services.AddScoped<IClaimInfrastructure, ClaimInfrastructure>();
 builder.Services.AddScoped<IEmailsInfrastructure, EmailsInfrastructure>();
 builder.Services.AddScoped<IBidderInfrastructure, BidderInfrastructure>();
 builder.Services.AddScoped<IBidderOperationInfrastructure, BidderOperationInfrastructure>();
+builder.Services.AddScoped<IMakeInfrastructure, MakeInfrastructure>();
+builder.Services.AddScoped<IModelInfrastructure, ModelInfrastructure>();
+builder.Services.AddScoped<IYearInfrastructure, YearInfrastructure>();
+builder.Services.AddScoped<ICategoryInfrastructure, CategoryInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -74,6 +78,10 @@ builder.Services.AddScoped<IClaimApplication, ClaimApplication>();
 builder.Services.AddScoped<IEmailsApplication, EmailsApplication>();
 builder.Services.AddScoped<IBidderApplication, BidderApplication>();
 builder.Services.AddScoped<IBidderOperationApplication, BidderOperationApplication>();
+builder.Services.AddScoped<IMakeApplication, MakeApplication>();
+builder.Services.AddScoped<IModelApplication, ModelApplication>();
+builder.Services.AddScoped<IYearApplication, YearApplication>();
+builder.Services.AddScoped<ICategoryApplication, CategoryApplication>();
 // AuthN / AuthZ
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
