@@ -168,18 +168,22 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         /// <summary>
         /// Update updates an existing Year and returns true if successful.
         /// </summary>
-        public async Task<bool> Update(Year Year)
+        public async Task<bool> Update(Year year)
         {
             var parameters = new List<DbParameter>
             {
-                base.GetParameter(YearIdParameterName, Year.YearId),
-                base.GetParameter(YearNameParameterName, Year.YearName),
-                base.GetParameter(ModifiedByIdParameterName, Year.ModifiedById)
+                base.GetParameter(YearIdParameterName, year.YearId),
+                // pass NULL to keep existing YearName
+                base.GetParameter(YearNameParameterName, (object?)year.YearName ?? DBNull.Value),
+                // pass NULL to keep existing ModelId (example: treat 0 as "not provided")
+                base.GetParameter(ModelIdParameterName, year.ModelId > 0 ? (object)year.ModelId : DBNull.Value),
+                base.GetParameter(ModifiedByIdParameterName, year.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
         }
+
 
         #endregion
     }

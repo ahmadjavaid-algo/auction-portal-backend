@@ -70,6 +70,8 @@ builder.Services.AddScoped<IMakeInfrastructure, MakeInfrastructure>();
 builder.Services.AddScoped<IModelInfrastructure, ModelInfrastructure>();
 builder.Services.AddScoped<IYearInfrastructure, YearInfrastructure>();
 builder.Services.AddScoped<ICategoryInfrastructure, CategoryInfrastructure>();
+builder.Services.AddScoped<IProductInfrastructure, ProductInfrastructure>();
+builder.Services.AddScoped<IInventoryInfrastructure, InventoryInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -82,6 +84,8 @@ builder.Services.AddScoped<IMakeApplication, MakeApplication>();
 builder.Services.AddScoped<IModelApplication, ModelApplication>();
 builder.Services.AddScoped<IYearApplication, YearApplication>();
 builder.Services.AddScoped<ICategoryApplication, CategoryApplication>();
+builder.Services.AddScoped<IProductApplication, ProductApplication>();
+builder.Services.AddScoped<IInventoryApplication, InventoryApplication>();
 // AuthN / AuthZ
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

@@ -173,13 +173,16 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             var parameters = new List<DbParameter>
             {
                 base.GetParameter(ModelIdParameterName, model.ModelId),
-                base.GetParameter(ModelNameParameterName, model.ModelName),
+                base.GetParameter(ModelNameParameterName, (object?)model.ModelName ?? DBNull.Value),
+                
+                base.GetParameter(MakeIdParameterName, model.MakeId > 0 ? (object)model.MakeId : DBNull.Value),
                 base.GetParameter(ModifiedByIdParameterName, model.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
         }
+
 
         #endregion
     }

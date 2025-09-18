@@ -168,18 +168,20 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         /// <summary>
         /// Update updates an existing Category and returns true if successful.
         /// </summary>
-        public async Task<bool> Update(Category Category)
+        public async Task<bool> Update(Category category)
         {
             var parameters = new List<DbParameter>
             {
-                base.GetParameter(CategoryIdParameterName, Category.CategoryId),
-                base.GetParameter(CategoryNameParameterName, Category.CategoryName),
-                base.GetParameter(ModifiedByIdParameterName, Category.ModifiedById)
+                base.GetParameter(CategoryIdParameterName, category.CategoryId),
+                base.GetParameter(CategoryNameParameterName, (object?)category.CategoryName ?? DBNull.Value),
+                base.GetParameter(YearIdParameterName, category.YearId > 0 ? (object)category.YearId : DBNull.Value),
+                base.GetParameter(ModifiedByIdParameterName, category.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
         }
+
 
         #endregion
     }
