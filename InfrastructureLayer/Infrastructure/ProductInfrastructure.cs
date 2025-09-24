@@ -36,6 +36,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string ModelIdColumnName = "ModelId";
         private const string CategoryIdColumnName = "CategoryId";
         private const string DisplayNameColumnName = "DisplayName";
+        private const string MakeNameColumnName = "MakeName";
+        private const string ModelNameColumnName = "ModelName";
+        private const string CategoryNameColumnName = "CategoryName";
+        private const string YearNameColumnName = "YearName";
 
         private const string ProductIdParameterName = "@ProductId";
         private const string MakeIdParameterName = "@MakeId";
@@ -131,6 +135,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         ModelId = reader.GetIntegerValue(ModelIdColumnName),
                         CategoryId = reader.GetIntegerValue(CategoryIdColumnName),
                         DisplayName = reader.GetStringValue(DisplayNameColumnName),
+                        MakeName = reader.GetStringValue(MakeNameColumnName),
+                        ModelName = reader.GetStringValue(ModelNameColumnName),
+                        YearName = reader.GetStringValue(YearNameColumnName),
+                        CategoryName = reader.GetStringValue(CategoryNameColumnName),
 
                         CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
                         CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
@@ -169,6 +177,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                             ModelId = reader.GetIntegerValue(ModelIdColumnName),
                             CategoryId = reader.GetIntegerValue(CategoryIdColumnName),
                             DisplayName = reader.GetStringValue(DisplayNameColumnName),
+                            MakeName = reader.GetStringValue(MakeNameColumnName),
+                            ModelName = reader.GetStringValue(ModelNameColumnName),
+                            YearName = reader.GetStringValue(YearNameColumnName),
+                            CategoryName = reader.GetStringValue(CategoryNameColumnName),
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
                         };
 

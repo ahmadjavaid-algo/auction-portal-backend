@@ -35,10 +35,12 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string ProductIdColumnName = "ProductId";
         private const string ProductJSONColumnName = "ProductJSON";
         private const string DescriptionColumnName = "Description";
+        private const string DisplayNameColumnName = "DisplayName";
 
         private const string InventoryIdParameterName = "@InventoryId";
         private const string ProductIdParameterName = "@ProductId";
-        private const string ProductJSONParameterName = "@ProductJSON"; // not used (server builds JSON)
+        private const string DisplayNameParameterName = "@DisplayName";
+        private const string ProductJSONParameterName = "@ProductJSON"; 
         private const string DescriptionParameterName = "@Description";
         private const string CreatedByIdParameterName = "@CreatedById";
         private const string ModifiedByIdParameterName = "@ModifiedById";
@@ -156,6 +158,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         {
                             InventoryId = reader.GetIntegerValue(InventoryIdColumnName),
                             ProductId = reader.GetIntegerValue(ProductIdColumnName),
+                            DisplayName = reader.GetStringValue(DisplayNameColumnName),
                             ProductJSON = reader.GetStringValue(ProductJSONColumnName),
                             Description = reader.GetStringValue(DescriptionColumnName),
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
@@ -182,7 +185,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             {
                 base.GetParameter(InventoryIdParameterName, inventory.InventoryId),
 
-                // pass NULLs when not changing (server will COALESCE to existing)
+            
                 base.GetParameter(ProductIdParameterName, inventory.ProductId > 0 ? (object)inventory.ProductId : DBNull.Value),
                 base.GetParameter(DescriptionParameterName, (object?)inventory.Description ?? DBNull.Value),
 

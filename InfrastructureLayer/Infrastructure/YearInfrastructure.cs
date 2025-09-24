@@ -33,10 +33,12 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string YearIdColumnName = "YearId";
         private const string ModelIdColumnName = "ModelId";
         private const string YearNameColumnName = "YearName";
+        private const string ModelNameColumnName = "ModelName";
 
         private const string YearIdParameterName = "@YearId";
         private const string ModelIdParameterName = "@ModelId";
         private const string YearNameParameterName = "@YearName";
+        private const string ModelNameParameterName = "@ModelName";
         private const string CreatedByIdParameterName = "@CreatedById";
         private const string ModifiedByIdParameterName = "@ModifiedById";
         #endregion
@@ -150,6 +152,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         {
                             YearId = reader.GetIntegerValue(YearIdColumnName),
                             ModelId = reader.GetIntegerValue(ModelIdColumnName),
+                            ModelName = reader.GetStringValue(ModelNameColumnName),
                             YearName = reader.GetStringValue(YearNameColumnName),
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
                         };

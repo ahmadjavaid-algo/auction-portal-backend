@@ -33,8 +33,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string ModelIdColumnName = "ModelId";
         private const string MakeIdColumnName = "MakeId";
         private const string ModelNameColumnName = "ModelName";
+        private const string MakeNameColumnName = "MakeName";
 
         private const string ModelIdParameterName = "@ModelId";
+        private const string MakeNameParameterName = "@MakeName";
         private const string MakeIdParameterName = "@MakeId";
         private const string ModelNameParameterName = "@ModelName";
         private const string CreatedByIdParameterName = "@CreatedById";
@@ -150,6 +152,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         {
                             ModelId = reader.GetIntegerValue(ModelIdColumnName),
                             MakeId = reader.GetIntegerValue(MakeIdColumnName),
+                            MakeName = reader.GetStringValue(MakeNameColumnName),
                             ModelName = reader.GetStringValue(ModelNameColumnName),
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
                         };
