@@ -10,5 +10,7 @@ namespace AuctionPortal.Models
         public string? ProductJSON { get; set; }
 
         public string? Description { get; set; }
+        public string? ChassisNo { get; set; }
+        public string? RegistrationNo { get; set; }
     }
 }
