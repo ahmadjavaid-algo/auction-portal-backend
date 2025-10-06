@@ -6,14 +6,13 @@ using AuctionPortal.Common.Services;
 using AuctionPortal.InfrastructureLayer.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Http.Features;         
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controllers
-builder.Services.AddControllers();
 
-// ----- CORS (allow Angular dev origin) -----
+builder.Services.AddControllers();
 var corsPolicy = "_devCors";
 builder.Services.AddCors(options =>
 {
@@ -21,7 +20,6 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod()
-    // .AllowCredentials() // enable only if you use cookies
     );
 });
 
@@ -51,12 +49,19 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Common services
+
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IHeaderValue, HeaderValue>();
 builder.Services.AddScoped<IBaseServiceConnector, BaseServiceConnector>();
 builder.Services.AddScoped<ITokenService, TokenService>();
 builder.Services.AddScoped<IEmailServiceConnector, EmailServiceConnector>();
+
+builder.Services.Configure<FormOptions>(o =>
+{
+    
+    o.MultipartBodyLengthLimit = 50_000_000;
+});
+
 
 // Infrastructure
 builder.Services.AddScoped<IUserInfrastructure, UserInfrastructure>();
@@ -74,6 +79,8 @@ builder.Services.AddScoped<IProductInfrastructure, ProductInfrastructure>();
 builder.Services.AddScoped<IInventoryInfrastructure, InventoryInfrastructure>();
 builder.Services.AddScoped<IAuctionInfrastructure, AuctionInfrastructure>();
 builder.Services.AddScoped<IInventoryAuctionInfrastructure, InventoryAuctionInfrastructure>();
+builder.Services.AddScoped<IDocumentFileInfrastructure, DocumentFileInfrastructure>();
+builder.Services.AddScoped<IInventoryDocumentFileInfrastructure, InventoryDocumentFileInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -90,7 +97,9 @@ builder.Services.AddScoped<IProductApplication, ProductApplication>();
 builder.Services.AddScoped<IInventoryApplication, InventoryApplication>();
 builder.Services.AddScoped<IAuctionApplication, AuctionApplication>();
 builder.Services.AddScoped<IInventoryAuctionApplication, InventoryAuctionApplication>();
-// AuthN / AuthZ
+builder.Services.AddScoped<IDocumentFileApplication, DocumentFileApplication>();
+builder.Services.AddScoped<IInventoryDocumentFileApplication, InventoryDocumentFileApplication>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -117,21 +126,23 @@ var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
-// In Development, DON'T force HTTPS so preflight to http://localhost:5070 works.
-// In other environments, keep HTTPS redirection on.
+
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
-// CORS must run before auth and before custom token middleware.
+
 app.UseCors(corsPolicy);
+
+
+app.UseStaticFiles();
+
 
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseAuthentication();
-// Ensure your TokenValidatorMiddleware ignores OPTIONS requests if it inspects Authorization.
 app.UseMiddleware<TokenValidatorMiddleware>();
 app.UseAuthorization();
 
