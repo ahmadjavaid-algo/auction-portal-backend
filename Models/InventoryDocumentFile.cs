@@ -16,13 +16,8 @@ namespace AuctionPortal.Models
         public string? DocumentDisplayName { get; set; }
 
         public string? DocumentName { get; set; }
-        public int? DocumentTypeId { get; set; }
-        public string? DocumentTypeName { get; set; }
+        public string? DocumentUrl { get; set; }        
         public string? DocumentExtension { get; set; }
-        public string? DocumentUrl { get; set; }
 
-        public string? InventoryDisplayName { get; set; }
-        public string? ChassisNo { get; set; }
-        public string? RegistrationNo { get; set; }
     }
 }

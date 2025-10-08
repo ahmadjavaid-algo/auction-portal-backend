@@ -37,7 +37,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string InventoryDisplayNameColumnName = "DisplayName";
         private const string ChassisNoColumnName = "ChassisNo";
         private const string RegistrationNoColumnName = "RegistrationNo";
-
+        private const string DocumentUrlColumnName = "DocumentUrl";
+        private const string DocumentExtensionColumnName = "DocumentExtension";
         // Parameters
         private const string InventoryDocumentFileIdParameterName = "@InventoryDocumentFileId";
         private const string DocumentFileIdParameterName = "@DocumentFileId";
@@ -45,6 +46,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string DocumentDisplayNameParameterName = "@DocumentDisplayName";
         private const string CreatedByIdParameterName = "@CreatedById";
         private const string ModifiedByIdParameterName = "@ModifiedById";
+
         #endregion
 
         #region IInventoryDocumentFileInfrastructure Implementation
@@ -164,9 +166,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
                             // Optional joined projections (safe reads)
                             DocumentName = reader.GetStringValue(DocumentNameColumnName),
-                            //InventoryDisplayName = reader.GetStringValue(InventoryDisplayNameColumnName),
-                            //ChassisNo = reader.GetStringValue(ChassisNoColumnName),
-                            //RegistrationNo = reader.GetStringValue(RegistrationNoColumnName),
+                            DocumentUrl = reader.GetStringValue(DocumentUrlColumnName),        // <—
+                            DocumentExtension = reader.GetStringValue(DocumentExtensionColumnName),
 
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
                         };
@@ -182,7 +183,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         }
 
         /// <summary>
-        /// Update an existing InventoryDocumentFile; SP uses COALESCE style updates.
+        /// Update an existing InventoryDocumentFile
         /// </summary>
         public async Task<bool> Update(InventoryDocumentFile entity)
         {
