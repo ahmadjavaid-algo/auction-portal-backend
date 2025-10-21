@@ -26,7 +26,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetListStoredProcedureName = "[dbo].[sp_Inventory_GetAll]";
         private const string UpdateStoredProcedureName = "[dbo].[sp_Inventory_Update]";
 
-        // Columns
+        
         private const string InventoryIdColumnName = "InventoryId";
         private const string ProductIdColumnName = "ProductId";
         private const string ProductJSONColumnName = "ProductJSON";
@@ -35,7 +35,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string ChassisNoColumnName = "ChassisNo";
         private const string RegistrationNoColumnName = "RegistrationNo";
 
-        // Parameters
+      
         private const string InventoryIdParameterName = "@InventoryId";
         private const string ProductIdParameterName = "@ProductId";
         private const string DescriptionParameterName = "@Description";
@@ -171,7 +171,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             {
                 base.GetParameter(InventoryIdParameterName, inventory.InventoryId),
 
-                // Nullable updates (SP rebuilds ProductJSON when ProductId changes)
+                
                 base.GetParameter(ProductIdParameterName,      inventory.ProductId > 0 ? (object)inventory.ProductId : DBNull.Value),
                 base.GetParameter(DescriptionParameterName,    (object?)inventory.Description ?? DBNull.Value),
                 base.GetParameter(ChassisNoParameterName,      (object?)inventory.ChassisNo ?? DBNull.Value),

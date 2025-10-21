@@ -166,7 +166,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
                             // Optional joined projections (safe reads)
                             DocumentName = reader.GetStringValue(DocumentNameColumnName),
-                            DocumentUrl = reader.GetStringValue(DocumentUrlColumnName),        // <—
+                            DocumentUrl = reader.GetStringValue(DocumentUrlColumnName),        
                             DocumentExtension = reader.GetStringValue(DocumentExtensionColumnName),
 
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)

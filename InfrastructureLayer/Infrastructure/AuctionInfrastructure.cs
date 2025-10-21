@@ -1,5 +1,4 @@
-﻿// AuctionPortal.InfrastructureLayer.Infrastructure/AuctionInfrastructure.cs
-using AuctionPortal.Common.Infrastructure;
+﻿using AuctionPortal.Common.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
 using AuctionPortal.Models;
 using Microsoft.Extensions.Configuration;
@@ -15,13 +14,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
     public class AuctionInfrastructure : BaseInfrastructure, IAuctionInfrastructure
     {
         #region Constructor
-        /// <summary>
-        /// AuctionInfrastructure initializes class object.
-        /// </summary>
         public AuctionInfrastructure(IConfiguration configuration, ILogger<AuctionInfrastructure> logger)
-            : base(configuration, logger)
-        {
-        }
+            : base(configuration, logger) { }
         #endregion
 
         #region Constants
@@ -30,18 +24,19 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetStoredProcedureName = "[dbo].[sp_Auction_Get]";
         private const string GetListStoredProcedureName = "[dbo].[sp_Auction_GetAll]";
         private const string UpdateStoredProcedureName = "[dbo].[sp_Auction_Update]";
+        private const string RecalcStatusesStoredProcedureName = "[dbo].[sp_Auction_RecalculateStatuses]";
 
-        // Column names (as selected by the SPs)
+        // Column names
         private const string AuctionIdColumnName = "AuctionId";
         private const string AuctionStatusIdColumnName = "AuctionStatusId";
         private const string AuctionNameColumnName = "AuctionName";
         private const string StartDateTimeColumnName = "StartDateTime";
         private const string EndDateTimeColumnName = "EndDateTime";
         private const string BidIncrementColumnName = "BidIncrement";
-        private const string AuctionStatusCodeColumnName = "AuctionStatusCode";  
-        private const string AuctionStatusNameColumnName = "AuctionStatusName"; 
+        private const string AuctionStatusCodeColumnName = "AuctionStatusCode";
+        private const string AuctionStatusNameColumnName = "AuctionStatusName";
 
-        // Parameter names (match SP signatures)
+        // Parameter names (for other SPs)
         private const string AuctionIdParameterName = "@AuctionId";
         private const string AuctionStatusIdParameterName = "@AuctionStatusId";
         private const string AuctionNameParameterName = "@AuctionName";
@@ -54,55 +49,42 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
         #region IAuctionInfrastructure Implementation
 
-        /// <summary>
-        /// Add adds new Auction and returns generated AuctionId.
-        /// </summary>
         public async Task<int> Add(Auction auction)
         {
             var parameters = new List<DbParameter>
             {
-                base.GetParameter(AuctionStatusIdParameterName, auction.AuctionStatusId),
-                base.GetParameter(AuctionNameParameterName,     auction.AuctionName),
-                base.GetParameter(StartDateTimeParameterName,   auction.StartDateTime),
-                base.GetParameter(EndDateTimeParameterName,     auction.EndDateTime),
-                base.GetParameter(BidIncrementParameterName,    auction.BidIncrement),
-                base.GetParameter(CreatedByIdParameterName,     auction.CreatedById)
+       
+                base.GetParameter(AuctionNameParameterName,   auction.AuctionName),
+                base.GetParameter(StartDateTimeParameterName, auction.StartDateTime),
+                base.GetParameter(EndDateTimeParameterName,   auction.EndDateTime),
+                base.GetParameter(BidIncrementParameterName,  auction.BidIncrement),
+                base.GetParameter(CreatedByIdParameterName,   auction.CreatedById)
             };
 
-            // sp_Auction_Add INSERTs and SELECTs the inserted row.
             using (var reader = await base.ExecuteReader(parameters, AddStoredProcedureName, CommandType.StoredProcedure))
             {
                 if (reader != null && reader.HasRows && reader.Read())
                 {
                     auction.AuctionId = reader.GetIntegerValue(AuctionIdColumnName);
                     auction.AuctionStatusId = reader.GetIntegerValue(AuctionStatusIdColumnName);
+                    auction.AuctionStatusCode = reader.GetStringValue(AuctionStatusCodeColumnName);
+                    auction.AuctionStatusName = reader.GetStringValue(AuctionStatusNameColumnName);
                     auction.AuctionName = reader.GetStringValue(AuctionNameColumnName);
                     auction.StartDateTime = reader.GetDateTimeValue(StartDateTimeColumnName);
                     auction.EndDateTime = reader.GetDateTimeValue(EndDateTimeColumnName);
                     auction.BidIncrement = reader.GetIntegerValue(BidIncrementColumnName);
-
-                    // Optional joined fields (safe reads)
-                    auction.AuctionStatusCode = reader.GetStringValue(AuctionStatusCodeColumnName);
-                    auction.AuctionStatusName = reader.GetStringValue(AuctionStatusNameColumnName);
-
-                    // Audit
                     auction.CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName);
                     auction.CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName);
                     auction.ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0;
                     auction.ModifiedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName);
                     auction.Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName);
                 }
-
-                if (reader != null && !reader.IsClosed)
-                    reader.Close();
+                if (reader != null && !reader.IsClosed) reader.Close();
             }
-
             return auction.AuctionId;
         }
 
-        /// <summary>
-        /// Activate activate/deactivate provided record and returns true if successful.
-        /// </summary>
+
         public async Task<bool> Activate(Auction auction)
         {
             var parameters = new List<DbParameter>
@@ -116,9 +98,6 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             return rows > 0;
         }
 
-        /// <summary>
-        /// Get fetches and returns a single Auction.
-        /// </summary>
         public async Task<Auction> Get(Auction auction)
         {
             Auction item = null;
@@ -141,11 +120,9 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         EndDateTime = reader.GetDateTimeValue(EndDateTimeColumnName),
                         BidIncrement = reader.GetIntegerValue(BidIncrementColumnName),
 
-                        
                         AuctionStatusCode = reader.GetStringValue(AuctionStatusCodeColumnName),
                         AuctionStatusName = reader.GetStringValue(AuctionStatusNameColumnName),
 
-                     
                         CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
                         CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
                         ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
@@ -154,16 +131,12 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                     };
                 }
 
-                if (reader != null && !reader.IsClosed)
-                    reader.Close();
+                if (reader != null && !reader.IsClosed) reader.Close();
             }
 
             return item;
         }
 
-        /// <summary>
-        /// GetList fetches and returns a list of Auctions (trimmed columns).
-        /// </summary>
         public async Task<List<Auction>> GetList(Auction auction)
         {
             var items = new List<Auction>();
@@ -184,7 +157,6 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                             EndDateTime = reader.GetDateTimeValue(EndDateTimeColumnName),
                             BidIncrement = reader.GetIntegerValue(BidIncrementColumnName),
 
-                            // Optional joined fields
                             AuctionStatusCode = reader.GetStringValue(AuctionStatusCodeColumnName),
                             AuctionStatusName = reader.GetStringValue(AuctionStatusNameColumnName),
 
@@ -194,35 +166,37 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         items.Add(item);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!reader.IsClosed) reader.Close();
                 }
             }
 
             return items;
         }
 
-        /// <summary>
-        /// Update updates an existing Auction and returns true if successful.
-        /// </summary>
         public async Task<bool> Update(Auction auction)
         {
             var parameters = new List<DbParameter>
             {
                 base.GetParameter(AuctionIdParameterName, auction.AuctionId),
-
                 base.GetParameter(AuctionNameParameterName,  (object?)auction.AuctionName ?? DBNull.Value),
-
-                base.GetParameter(AuctionStatusIdParameterName, auction.AuctionStatusId > 0 ? (object)auction.AuctionStatusId : DBNull.Value),
                 base.GetParameter(StartDateTimeParameterName, auction.StartDateTime != default ? (object)auction.StartDateTime : DBNull.Value),
                 base.GetParameter(EndDateTimeParameterName,   auction.EndDateTime   != default ? (object)auction.EndDateTime   : DBNull.Value),
                 base.GetParameter(BidIncrementParameterName,  auction.BidIncrement  >= 0      ? (object)auction.BidIncrement  : DBNull.Value),
-
-                base.GetParameter(ModifiedByIdParameterName, auction.ModifiedById)
+                base.GetParameter(ModifiedByIdParameterName,  auction.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
+        }
+
+        /// <summary>
+        /// Calls [dbo].[sp_Auction_RecalculateStatuses] which uses server **local time**.
+        /// </summary>
+        public async Task<int> RecalculateStatuses()
+        {
+            var parameters = new List<DbParameter>(); // no parameters
+            var rows = await base.ExecuteNonQuery(parameters, RecalcStatusesStoredProcedureName, CommandType.StoredProcedure);
+            return rows; // @@ROWCOUNT from the proc
         }
 
         #endregion

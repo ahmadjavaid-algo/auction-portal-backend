@@ -1,7 +1,6 @@
 ﻿// AuctionPortal.InfrastructureLayer.Infrastructure/InventoryAuctionInfrastructure.cs
 using AuctionPortal.Common.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
-using AuctionPortal.Models;
 using AuctionPortal.Models;  
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
@@ -217,8 +216,6 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                 base.GetParameter(InventoryIdParameterName,              invAuc.InventoryId              > 0 ? (object)invAuc.InventoryId              : DBNull.Value),
                 base.GetParameter(AuctionIdParameterName,                invAuc.AuctionId                > 0 ? (object)invAuc.AuctionId                : DBNull.Value),
 
-                // DO NOT send BidIncrement – SP will keep or re-snapshot it
-                // base.GetParameter(BidIncrementParameterName, DBNull.Value),
 
                 base.GetParameter(BuyNowPriceParameterName,   invAuc.BuyNowPrice  >= 0 ? (object)invAuc.BuyNowPrice  : DBNull.Value),
                 base.GetParameter(ReservePriceParameterName,  invAuc.ReservePrice >= 0 ? (object)invAuc.ReservePrice : DBNull.Value),

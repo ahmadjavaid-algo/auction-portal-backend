@@ -5,5 +5,6 @@ namespace AuctionPortal.InfrastructureLayer.Interfaces
 {
     public interface IAuctionInfrastructure : IBaseInfrastructure<Auction>
     {
+        Task<int> RecalculateStatuses();
     }
 }

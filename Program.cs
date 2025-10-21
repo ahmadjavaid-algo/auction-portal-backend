@@ -1,4 +1,4 @@
-using AuctionPortal.ApplicationLayer.Application;
+﻿using AuctionPortal.ApplicationLayer.Application;
 using AuctionPortal.ApplicationLayer.IApplication;
 using AuctionPortal.Common.Core;
 using AuctionPortal.Common.Middleware;
@@ -6,13 +6,18 @@ using AuctionPortal.Common.Services;
 using AuctionPortal.InfrastructureLayer.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Http.Features;         
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.OpenApi.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+
+// ⬇⬇ add this using for the worker
+using AuctionPortal.Workers;
 
 var builder = WebApplication.CreateBuilder(args);
 
-
 builder.Services.AddControllers();
+
 var corsPolicy = "_devCors";
 builder.Services.AddCors(options =>
 {
@@ -49,7 +54,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IHeaderValue, HeaderValue>();
 builder.Services.AddScoped<IBaseServiceConnector, BaseServiceConnector>();
@@ -58,10 +62,8 @@ builder.Services.AddScoped<IEmailServiceConnector, EmailServiceConnector>();
 
 builder.Services.Configure<FormOptions>(o =>
 {
-    
     o.MultipartBodyLengthLimit = 50_000_000;
 });
-
 
 // Infrastructure
 builder.Services.AddScoped<IUserInfrastructure, UserInfrastructure>();
@@ -81,6 +83,7 @@ builder.Services.AddScoped<IAuctionInfrastructure, AuctionInfrastructure>();
 builder.Services.AddScoped<IInventoryAuctionInfrastructure, InventoryAuctionInfrastructure>();
 builder.Services.AddScoped<IDocumentFileInfrastructure, DocumentFileInfrastructure>();
 builder.Services.AddScoped<IInventoryDocumentFileInfrastructure, InventoryDocumentFileInfrastructure>();
+
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -122,22 +125,21 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("ROLE_RGL", p => p.RequireClaim("perm", "ROLE_RGL"));
 });
 
+// ⬇⬇ register the background worker (runs every N seconds; configured in appsettings)
+builder.Services.AddHostedService<AuctionStatusUpdater>();
+
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
-
 
 if (!app.Environment.IsDevelopment())
 {
     app.UseHttpsRedirection();
 }
 
-
 app.UseCors(corsPolicy);
 
-
 app.UseStaticFiles();
-
 
 app.UseSwagger();
 app.UseSwaggerUI();
