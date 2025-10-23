@@ -25,7 +25,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string GetListStoredProcedureName = "[dbo].[sp_Auction_GetAll]";
         private const string UpdateStoredProcedureName = "[dbo].[sp_Auction_Update]";
         private const string RecalcStatusesStoredProcedureName = "[dbo].[sp_Auction_RecalculateStatuses]";
-
+        private const string GetTimeboxStoredProcedureName = "[dbo].[sp_Auction_GetTimebox]";
         // Column names
         private const string AuctionIdColumnName = "AuctionId";
         private const string AuctionStatusIdColumnName = "AuctionStatusId";
@@ -45,6 +45,9 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string BidIncrementParameterName = "@BidIncrement";
         private const string CreatedByIdParameterName = "@CreatedById";
         private const string ModifiedByIdParameterName = "@ModifiedById";
+        private const string NowEpochMsUtcColumnName = "NowEpochMsUtc";
+        private const string StartEpochMsUtcColumnName = "StartEpochMsUtc";
+        private const string EndEpochMsUtcColumnName = "EndEpochMsUtc";
         #endregion
 
         #region IAuctionInfrastructure Implementation
@@ -198,7 +201,39 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             var rows = await base.ExecuteNonQuery(parameters, RecalcStatusesStoredProcedureName, CommandType.StoredProcedure);
             return rows; // @@ROWCOUNT from the proc
         }
+        public async Task<AuctionTimebox> GetTimebox(Auction auction)
+        {
+            AuctionTimebox item = null;
 
+            var parameters = new List<DbParameter>
+            {
+                base.GetParameter(AuctionIdParameterName, auction.AuctionId)
+            };
+
+            using (var reader = await base.ExecuteReader(parameters, GetTimeboxStoredProcedureName, CommandType.StoredProcedure))
+            {
+                if (reader != null && reader.HasRows && reader.Read())
+                {
+                    item = new AuctionTimebox
+                    {
+                        AuctionId = reader.GetIntegerValue(AuctionIdColumnName),
+
+                        StartEpochMsUtc = reader.GetLongValue(StartEpochMsUtcColumnName),
+                        EndEpochMsUtc = reader.GetLongValue(EndEpochMsUtcColumnName),
+                        NowEpochMsUtc = reader.GetLongValue(NowEpochMsUtcColumnName),
+
+                        AuctionStatusId = reader.GetIntegerValue(AuctionStatusIdColumnName),
+                        AuctionStatusCode = reader.GetStringValue(AuctionStatusCodeColumnName),
+                        AuctionStatusName = reader.GetStringValue(AuctionStatusNameColumnName)
+                    };
+                }
+
+                if (reader != null && !reader.IsClosed)
+                    reader.Close();
+            }
+
+            return item;
+        }
         #endregion
     }
 }

@@ -59,5 +59,11 @@ namespace AuctionPortal.Controllers
             List<Auction> response = await this.AuctionApplication.GetList(request);
             return response;
         }
+        [HttpGet("gettimebox")]
+        public async Task<AuctionTimebox> GetTimebox([FromQuery] Auction request)
+        {
+            var response = await this.AuctionApplication.GetTimebox(request);
+            return response;
+        }
     }
 }

@@ -6,5 +6,6 @@ namespace AuctionPortal.InfrastructureLayer.Interfaces
     public interface IAuctionInfrastructure : IBaseInfrastructure<Auction>
     {
         Task<int> RecalculateStatuses();
+        Task<AuctionTimebox> GetTimebox(Auction auction);
     }
 }

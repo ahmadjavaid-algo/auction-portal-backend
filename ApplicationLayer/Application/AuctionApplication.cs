@@ -45,6 +45,10 @@ namespace AuctionPortal.ApplicationLayer.Application
         {
             return await AuctionInfrastructure.Activate(entity);
         }
+        public async Task<AuctionTimebox> GetTimebox(Auction entity)
+        {
+            return await AuctionInfrastructure.GetTimebox(entity);
+        }
         #endregion
     }
 }
