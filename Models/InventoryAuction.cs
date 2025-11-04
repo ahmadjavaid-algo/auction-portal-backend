@@ -10,8 +10,8 @@ namespace AuctionPortal.Models
         public int AuctionId { get; set; }
 
         public int InventoryAuctionStatusId { get; set; }
-        
 
+        public int AuctionStartPrice { get; set; }
         public int BidIncrement { get; set; }
         public int BuyNowPrice { get; set; }
         public int ReservePrice { get; set; }

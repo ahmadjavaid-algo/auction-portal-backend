@@ -9,7 +9,6 @@ using AuctionPortal.InfrastructureLayer.Interfaces;
 
 namespace AuctionPortal.Workers
 {
-
     public class AuctionStatusUpdater : BackgroundService
     {
         private readonly ILogger<AuctionStatusUpdater> _logger;

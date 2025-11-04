@@ -1,7 +1,7 @@
 ﻿// AuctionPortal.InfrastructureLayer.Infrastructure/InventoryAuctionInfrastructure.cs
 using AuctionPortal.Common.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
-using AuctionPortal.Models;  
+using AuctionPortal.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System;
@@ -37,6 +37,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string InventoryIdColumnName = "InventoryId";
         private const string AuctionIdColumnName = "AuctionId";
         private const string BidIncrementColumnName = "BidIncrement";
+        private const string AuctionStartPriceColumnName = "AuctionStartPrice";
         private const string BuyNowPriceColumnName = "BuyNowPrice";
         private const string ReservePriceColumnName = "ReservePrice";
         private const string InventoryAuctionStatusCodeColumn = "InventoryAuctionStatusCode";
@@ -48,6 +49,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string InventoryIdParameterName = "@InventoryId";
         private const string AuctionIdParameterName = "@AuctionId";
         private const string BidIncrementParameterName = "@BidIncrement";
+        private const string AuctionStartPriceParameterName = "@AuctionStartPrice";
         private const string BuyNowPriceParameterName = "@BuyNowPrice";
         private const string ReservePriceParameterName = "@ReservePrice";
         private const string CreatedByIdParameterName = "@CreatedById";
@@ -67,8 +69,9 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                 base.GetParameter(InventoryAuctionStatusIdParameterName, invAuc.InventoryAuctionStatusId),
                 base.GetParameter(InventoryIdParameterName,              invAuc.InventoryId),
                 base.GetParameter(AuctionIdParameterName,                invAuc.AuctionId),
-                base.GetParameter(BuyNowPriceParameterName,              (object?)invAuc.BuyNowPrice   ?? DBNull.Value),
-                base.GetParameter(ReservePriceParameterName,             (object?)invAuc.ReservePrice  ?? DBNull.Value),
+                base.GetParameter(AuctionStartPriceParameterName,        (object)invAuc.AuctionStartPrice),
+                base.GetParameter(BuyNowPriceParameterName,              (object)invAuc.BuyNowPrice),
+                base.GetParameter(ReservePriceParameterName,             (object)invAuc.ReservePrice),
                 base.GetParameter(CreatedByIdParameterName,              invAuc.CreatedById)
             };
 
@@ -81,6 +84,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                     invAuc.InventoryId = reader.GetIntegerValue(InventoryIdColumnName);
                     invAuc.AuctionId = reader.GetIntegerValue(AuctionIdColumnName);
                     invAuc.BidIncrement = reader.GetIntegerValue(BidIncrementColumnName);
+                    invAuc.AuctionStartPrice = reader.GetIntegerValueNullable(AuctionStartPriceColumnName) ?? 0;
                     invAuc.BuyNowPrice = reader.GetIntegerValueNullable(BuyNowPriceColumnName) ?? 0;
                     invAuc.ReservePrice = reader.GetIntegerValueNullable(ReservePriceColumnName) ?? 0;
 
@@ -140,6 +144,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                         InventoryId = reader.GetIntegerValue(InventoryIdColumnName),
                         AuctionId = reader.GetIntegerValue(AuctionIdColumnName),
                         BidIncrement = reader.GetIntegerValue(BidIncrementColumnName),
+                        AuctionStartPrice = reader.GetIntegerValueNullable(AuctionStartPriceColumnName) ?? 0,
                         BuyNowPrice = reader.GetIntegerValueNullable(BuyNowPriceColumnName) ?? 0,
                         ReservePrice = reader.GetIntegerValueNullable(ReservePriceColumnName) ?? 0,
 
@@ -182,6 +187,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                             InventoryId = reader.GetIntegerValue(InventoryIdColumnName),
                             AuctionId = reader.GetIntegerValue(AuctionIdColumnName),
                             BidIncrement = reader.GetIntegerValue(BidIncrementColumnName),
+                            AuctionStartPrice = reader.GetIntegerValueNullable(AuctionStartPriceColumnName) ?? 0,
                             BuyNowPrice = reader.GetIntegerValueNullable(BuyNowPriceColumnName) ?? 0,
                             ReservePrice = reader.GetIntegerValueNullable(ReservePriceColumnName) ?? 0,
 
@@ -212,21 +218,26 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             {
                 base.GetParameter(InventoryAuctionIdParameterName, invAuc.InventoryAuctionId),
 
-                base.GetParameter(InventoryAuctionStatusIdParameterName, invAuc.InventoryAuctionStatusId > 0 ? (object)invAuc.InventoryAuctionStatusId : DBNull.Value),
-                base.GetParameter(InventoryIdParameterName,              invAuc.InventoryId              > 0 ? (object)invAuc.InventoryId              : DBNull.Value),
-                base.GetParameter(AuctionIdParameterName,                invAuc.AuctionId                > 0 ? (object)invAuc.AuctionId                : DBNull.Value),
+                base.GetParameter(InventoryAuctionStatusIdParameterName,
+                    invAuc.InventoryAuctionStatusId > 0 ? (object)invAuc.InventoryAuctionStatusId : DBNull.Value),
+                base.GetParameter(InventoryIdParameterName,
+                    invAuc.InventoryId > 0 ? (object)invAuc.InventoryId : DBNull.Value),
+                base.GetParameter(AuctionIdParameterName,
+                    invAuc.AuctionId > 0 ? (object)invAuc.AuctionId : DBNull.Value),
 
+                base.GetParameter(AuctionStartPriceParameterName,
+                    invAuc.AuctionStartPrice >= 0 ? (object)invAuc.AuctionStartPrice : DBNull.Value),
+                base.GetParameter(BuyNowPriceParameterName,
+                    invAuc.BuyNowPrice >= 0 ? (object)invAuc.BuyNowPrice : DBNull.Value),
+                base.GetParameter(ReservePriceParameterName,
+                    invAuc.ReservePrice >= 0 ? (object)invAuc.ReservePrice : DBNull.Value),
 
-                base.GetParameter(BuyNowPriceParameterName,   invAuc.BuyNowPrice  >= 0 ? (object)invAuc.BuyNowPrice  : DBNull.Value),
-                base.GetParameter(ReservePriceParameterName,  invAuc.ReservePrice >= 0 ? (object)invAuc.ReservePrice : DBNull.Value),
-
-                base.GetParameter(ModifiedByIdParameterName,  invAuc.ModifiedById)
+                base.GetParameter(ModifiedByIdParameterName, invAuc.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
             return rows > 0;
         }
-
 
         #endregion
     }

@@ -83,6 +83,7 @@ builder.Services.AddScoped<IAuctionInfrastructure, AuctionInfrastructure>();
 builder.Services.AddScoped<IInventoryAuctionInfrastructure, InventoryAuctionInfrastructure>();
 builder.Services.AddScoped<IDocumentFileInfrastructure, DocumentFileInfrastructure>();
 builder.Services.AddScoped<IInventoryDocumentFileInfrastructure, InventoryDocumentFileInfrastructure>();
+builder.Services.AddScoped<IFavouriteInfrastructure, FavouriteInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -101,6 +102,7 @@ builder.Services.AddScoped<IAuctionApplication, AuctionApplication>();
 builder.Services.AddScoped<IInventoryAuctionApplication, InventoryAuctionApplication>();
 builder.Services.AddScoped<IDocumentFileApplication, DocumentFileApplication>();
 builder.Services.AddScoped<IInventoryDocumentFileApplication, InventoryDocumentFileApplication>();
+builder.Services.AddScoped<IFavouriteApplication, FavouriteApplication>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
