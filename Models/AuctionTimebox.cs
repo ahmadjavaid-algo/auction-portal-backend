@@ -9,6 +9,7 @@ namespace AuctionPortal.Models
         public long StartEpochMsUtc { get; set; }
         public long EndEpochMsUtc { get; set; }
         public long NowEpochMsUtc { get; set; }
+        public string AuctionName { get; set; } = string.Empty;
 
         public int AuctionStatusId { get; set; }
         public string AuctionStatusCode { get; set; } = string.Empty;

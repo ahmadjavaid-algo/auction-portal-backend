@@ -1,49 +1,277 @@
-﻿using AuctionPortal.ApplicationLayer.IApplication;
+﻿using System.Security.Claims;
+using AuctionPortal.ApplicationLayer.IApplication;
+using AuctionPortal.Common.Auth;
 using AuctionPortal.Common.Controllers;
 using AuctionPortal.Common.Core;
 using AuctionPortal.Common.Models;
+using AuctionPortal.Hubs;
 using AuctionPortal.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.SignalR;
 
 namespace AuctionPortal.Controllers
 {
+    [Authorize] // JWT required
     public class FavouritesController : APIBaseController
     {
         #region Constructor
-        /// <summary>
-        /// FavouritesController initializes class object.
-        /// </summary>
-        public FavouritesController(IFavouriteApplication FavouriteApplication, IHeaderValue headerValue, IConfiguration configuration)
+
+        public FavouritesController(
+            IFavouriteApplication favouriteApplication,
+            IInventoryAuctionApplication inventoryAuctionApplication,
+            IAuctionApplication auctionApplication,
+            INotificationApplication notificationApplication,
+            IHubContext<NotificationHub> hub,
+            IHeaderValue headerValue,
+            IConfiguration configuration)
             : base(headerValue, configuration)
         {
-            this.FavouriteApplication = FavouriteApplication;
+            FavouriteApplication = favouriteApplication;
+            _inventoryAuctionApplication = inventoryAuctionApplication;
+            _auctionApplication = auctionApplication;
+            _notificationApplication = notificationApplication;
+            _hub = hub;
         }
+
         #endregion
 
         #region Properties and Data Members
+
         public IFavouriteApplication FavouriteApplication { get; }
+        private readonly IInventoryAuctionApplication _inventoryAuctionApplication;
+        private readonly IAuctionApplication _auctionApplication;
+        private readonly INotificationApplication _notificationApplication;
+        private readonly IHubContext<NotificationHub> _hub;
+
         #endregion
 
-        [HttpPost("add")]
-        public async Task<int> Add([FromBody] Favourite Favourite)
+        #region Helpers
+
+        private int GetCurrentUserId()
         {
-            var FavouriteId = await this.FavouriteApplication.Add(Favourite);
-            return FavouriteId;
+            var claim = User.FindFirst(ClaimsConstants.UserIdClaimType)
+                        ?? User.FindFirst(ClaimTypes.NameIdentifier);
+
+            return claim != null && int.TryParse(claim.Value, out var id) ? id : 0;
+        }
+
+        /// <summary>
+        /// Persist a Notification row in the DB.
+        /// </summary>
+        private async Task<int> AddNotificationRowAsync(
+            int userId,
+            string type,
+            string title,
+            string message)
+        {
+            var notification = new Notification
+            {
+                UserId = userId,
+                Type = type,
+                Title = title,
+                Message = message,
+                IsRead = false,
+
+                CreatedById = userId
+            };
+
+            // Inserts row and returns NotificationId
+            var id = await _notificationApplication.Add(notification);
+            return id;
+        }
+
+        /// <summary>
+        /// Builds a FavouriteNotification + message and:
+        ///  1) stores Notification row in DB
+        ///  2) pushes "FavouriteAdded" via SignalR
+        /// Used for both first-time add and re-activation.
+        /// </summary>
+        private async Task SendFavouriteNotificationAsync(
+            int userId,
+            int favouriteId,
+            int inventoryAuctionId)
+        {
+            // 1) Fetch the inventory auction
+            var invAuc = await _inventoryAuctionApplication.Get(new InventoryAuction
+            {
+                InventoryAuctionId = inventoryAuctionId
+            });
+
+            if (invAuc == null)
+                return;
+
+            // 2) Fetch the auction timebox / metadata
+            var timebox = await _auctionApplication.GetTimebox(new Auction
+            {
+                AuctionId = invAuc.AuctionId
+            });
+
+            var titleText = $"{timebox?.AuctionName ?? "Auction"} — Lot #{invAuc.InventoryId}";
+
+            var notification = new FavouriteNotification
+            {
+                FavouriteId = favouriteId,
+                UserId = userId,
+                InventoryAuctionId = invAuc.InventoryAuctionId,
+                AuctionId = invAuc.AuctionId,
+                Title = titleText,
+                StartEpochMsUtc = timebox?.StartEpochMsUtc,
+                EndEpochMsUtc = timebox?.EndEpochMsUtc
+            };
+
+            // 3) Build message for Notification table
+            var lotLabel = titleText;
+            var msg = $"{lotLabel} has been added to your favourites.";
+
+            if (timebox != null)
+            {
+                if (timebox.StartEpochMsUtc > 0 && timebox.EndEpochMsUtc > 0)
+                {
+                    var start = DateTimeOffset.FromUnixTimeMilliseconds(timebox.StartEpochMsUtc).UtcDateTime;
+                    var end = DateTimeOffset.FromUnixTimeMilliseconds(timebox.EndEpochMsUtc).UtcDateTime;
+                    msg += $" Auction runs {start:u} → {end:u}.";
+                }
+                else if (timebox.StartEpochMsUtc > 0)
+                {
+                    var start = DateTimeOffset.FromUnixTimeMilliseconds(timebox.StartEpochMsUtc).UtcDateTime;
+                    msg += $" Auction starts at {start:u}.";
+                }
+            }
+
+            // 4) Persist "favourite-added" notification in DB
+            await AddNotificationRowAsync(
+                userId,
+                type: "favourite-added",
+                title: titleText,
+                message: msg
+            );
+
+            // 5) Push realtime event via SignalR (the Angular hub service already handles this)
+            await _hub.Clients
+                .User(userId.ToString())
+                .SendAsync("FavouriteAdded", notification);
+        }
+
+        /// <summary>
+        /// Creates & stores a "favourite-deactivated" Notification row and
+        /// pushes a "FavouriteDeactivated" event via SignalR.
+        /// </summary>
+        private async Task SendFavouriteRemovedNotificationAsync(
+            int userId,
+            Favourite favourite)
+        {
+            // load inventory auction for nicer labels (optional but nicer)
+            var invAuc = await _inventoryAuctionApplication.Get(new InventoryAuction
+            {
+                InventoryAuctionId = favourite.InventoryAuctionId
+            });
+
+            string titleText;
+            string messageText;
+
+            if (invAuc != null)
+            {
+                var timebox = await _auctionApplication.GetTimebox(new Auction
+                {
+                    AuctionId = invAuc.AuctionId
+                });
+
+                var auctionName = timebox?.AuctionName ?? "Auction";
+                titleText = $"{auctionName} — Lot #{invAuc.InventoryId}";
+                messageText = $"You removed {titleText} from your favourites.";
+            }
+            else
+            {
+                titleText = "Favourite removed";
+                messageText = $"You removed lot #{favourite.InventoryAuctionId} from your favourites.";
+            }
+
+            // 1) Persist in Notification table
+            await AddNotificationRowAsync(
+                userId,
+                type: "favourite-deactivated",
+                title: titleText,
+                message: messageText
+            );
+
+            // 2) Push realtime event via SignalR (same shape as before)
+            await _hub.Clients
+                .User(userId.ToString())
+                .SendAsync("FavouriteDeactivated", new
+                {
+                    favouriteId = favourite.BidderInventoryAuctionFavoriteId,
+                    userId,
+                    inventoryAuctionId = favourite.InventoryAuctionId
+                });
+        }
+
+        #endregion
+
+        #region Endpoints
+
+        [HttpPost("add")]
+        public async Task<int> Add([FromBody] Favourite favourite)
+        {
+            var userId = GetCurrentUserId();
+            favourite.UserId = userId; // trust JWT, not client
+
+            var favouriteId = await this.FavouriteApplication.Add(favourite);
+
+            // persist + push real-time notification (first-time add)
+            await SendFavouriteNotificationAsync(
+                userId,
+                favouriteId,
+                favourite.InventoryAuctionId);
+
+            return favouriteId;
         }
 
         [HttpPut("update")]
-        public async Task<bool> Update([FromBody] Favourite Favourite)
+        public async Task<bool> Update([FromBody] Favourite favourite)
         {
-            var response = await FavouriteApplication.Update(Favourite);
+            var response = await FavouriteApplication.Update(favourite);
             return response;
         }
 
         [HttpPut("activate")]
-        public async Task<bool> Activate([FromBody] Favourite Favourite)
+        public async Task<bool> Activate([FromBody] Favourite favourite)
         {
-            var response = await FavouriteApplication.Activate(Favourite);
-            return response;
+            var response = await FavouriteApplication.Activate(favourite);
+            if (!response)
+            {
+                return false;
+            }
+
+            var userId = GetCurrentUserId();
+
+            // Load the full favourite row so we have InventoryAuctionId etc.
+            var dbFavourite = await FavouriteApplication.Get(new Favourite
+            {
+                BidderInventoryAuctionFavoriteId = favourite.BidderInventoryAuctionFavoriteId
+            });
+
+            if (dbFavourite == null)
+            {
+                // State already toggled, nothing more we can do
+                return true;
+            }
+
+            if (favourite.Active)
+            {
+                // RE-ACTIVATED: treat like "added" again
+                await SendFavouriteNotificationAsync(
+                    userId,
+                    dbFavourite.BidderInventoryAuctionFavoriteId,
+                    dbFavourite.InventoryAuctionId);
+            }
+            else
+            {
+                // DEACTIVATED: store + broadcast removal notification
+                await SendFavouriteRemovedNotificationAsync(userId, dbFavourite);
+            }
+
+            return true;
         }
 
         [HttpGet("get")]
@@ -59,5 +287,7 @@ namespace AuctionPortal.Controllers
             List<Favourite> response = await this.FavouriteApplication.GetList(request);
             return response;
         }
+
+        #endregion
     }
 }

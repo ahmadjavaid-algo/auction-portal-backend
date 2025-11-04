@@ -5,14 +5,15 @@ using AuctionPortal.Common.Middleware;
 using AuctionPortal.Common.Services;
 using AuctionPortal.InfrastructureLayer.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
+using AuctionPortal.Workers;                      
+using AuctionPortal.Hubs;         
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http.Features;
-using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-
-// ⬇⬇ add this using for the worker
-using AuctionPortal.Workers;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -25,6 +26,7 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:4200", "https://localhost:4200")
               .AllowAnyHeader()
               .AllowAnyMethod()
+              .AllowCredentials() // ⬅ IMPORTANT for SignalR
     );
 });
 
@@ -84,6 +86,7 @@ builder.Services.AddScoped<IInventoryAuctionInfrastructure, InventoryAuctionInfr
 builder.Services.AddScoped<IDocumentFileInfrastructure, DocumentFileInfrastructure>();
 builder.Services.AddScoped<IInventoryDocumentFileInfrastructure, InventoryDocumentFileInfrastructure>();
 builder.Services.AddScoped<IFavouriteInfrastructure, FavouriteInfrastructure>();
+builder.Services.AddScoped<INotificationInfrastructure, NotificationInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -103,6 +106,8 @@ builder.Services.AddScoped<IInventoryAuctionApplication, InventoryAuctionApplica
 builder.Services.AddScoped<IDocumentFileApplication, DocumentFileApplication>();
 builder.Services.AddScoped<IInventoryDocumentFileApplication, InventoryDocumentFileApplication>();
 builder.Services.AddScoped<IFavouriteApplication, FavouriteApplication>();
+builder.Services.AddScoped<INotificationApplication, NotificationApplication>();
+
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -124,6 +129,10 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("ROLE_RGI", p => p.RequireClaim("perm", "ROLE_RGI"));
     options.AddPolicy("ROLE_RGL", p => p.RequireClaim("perm", "ROLE_RGL"));
 });
+
+// ⬇⬇ SignalR registration
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
 
 // ⬇⬇ register the background worker (runs every N seconds; configured in appsettings)
 builder.Services.AddHostedService<AuctionStatusUpdater>();
@@ -149,5 +158,8 @@ app.UseMiddleware<TokenValidatorMiddleware>();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// Map the notifications hub
+app.MapHub<NotificationHub>("/hubs/notifications");
 
 app.Run();
