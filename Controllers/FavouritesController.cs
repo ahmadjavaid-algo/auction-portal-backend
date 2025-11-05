@@ -56,6 +56,7 @@ namespace AuctionPortal.Controllers
             return claim != null && int.TryParse(claim.Value, out var id) ? id : 0;
         }
 
+
         /// <summary>
         /// Persist a Notification row in the DB.
         /// </summary>
@@ -63,7 +64,9 @@ namespace AuctionPortal.Controllers
             int userId,
             string type,
             string title,
-            string message)
+            string message,
+            int? auctionId = null,
+            int? inventoryAuctionId = null)
         {
             var notification = new Notification
             {
@@ -72,14 +75,15 @@ namespace AuctionPortal.Controllers
                 Title = title,
                 Message = message,
                 IsRead = false,
-
-                CreatedById = userId
+                CreatedById = userId,
+                AuctionId = auctionId,
+                InventoryAuctionId = inventoryAuctionId
             };
 
-            // Inserts row and returns NotificationId
             var id = await _notificationApplication.Add(notification);
             return id;
         }
+
 
         /// <summary>
         /// Builds a FavouriteNotification + message and:
@@ -88,11 +92,10 @@ namespace AuctionPortal.Controllers
         /// Used for both first-time add and re-activation.
         /// </summary>
         private async Task SendFavouriteNotificationAsync(
-            int userId,
-            int favouriteId,
-            int inventoryAuctionId)
+    int userId,
+    int favouriteId,
+    int inventoryAuctionId)
         {
-            // 1) Fetch the inventory auction
             var invAuc = await _inventoryAuctionApplication.Get(new InventoryAuction
             {
                 InventoryAuctionId = inventoryAuctionId
@@ -101,7 +104,6 @@ namespace AuctionPortal.Controllers
             if (invAuc == null)
                 return;
 
-            // 2) Fetch the auction timebox / metadata
             var timebox = await _auctionApplication.GetTimebox(new Auction
             {
                 AuctionId = invAuc.AuctionId
@@ -120,7 +122,6 @@ namespace AuctionPortal.Controllers
                 EndEpochMsUtc = timebox?.EndEpochMsUtc
             };
 
-            // 3) Build message for Notification table
             var lotLabel = titleText;
             var msg = $"{lotLabel} has been added to your favourites.";
 
@@ -139,29 +140,30 @@ namespace AuctionPortal.Controllers
                 }
             }
 
-            // 4) Persist "favourite-added" notification in DB
+            // tie to auction/lot
             await AddNotificationRowAsync(
                 userId,
                 type: "favourite-added",
                 title: titleText,
-                message: msg
+                message: msg,
+                auctionId: invAuc.AuctionId,
+                inventoryAuctionId: invAuc.InventoryAuctionId
             );
 
-            // 5) Push realtime event via SignalR (the Angular hub service already handles this)
             await _hub.Clients
                 .User(userId.ToString())
                 .SendAsync("FavouriteAdded", notification);
         }
+
 
         /// <summary>
         /// Creates & stores a "favourite-deactivated" Notification row and
         /// pushes a "FavouriteDeactivated" event via SignalR.
         /// </summary>
         private async Task SendFavouriteRemovedNotificationAsync(
-            int userId,
-            Favourite favourite)
+     int userId,
+     Favourite favourite)
         {
-            // load inventory auction for nicer labels (optional but nicer)
             var invAuc = await _inventoryAuctionApplication.Get(new InventoryAuction
             {
                 InventoryAuctionId = favourite.InventoryAuctionId
@@ -169,6 +171,7 @@ namespace AuctionPortal.Controllers
 
             string titleText;
             string messageText;
+            int? auctionId = null;
 
             if (invAuc != null)
             {
@@ -180,6 +183,7 @@ namespace AuctionPortal.Controllers
                 var auctionName = timebox?.AuctionName ?? "Auction";
                 titleText = $"{auctionName} — Lot #{invAuc.InventoryId}";
                 messageText = $"You removed {titleText} from your favourites.";
+                auctionId = invAuc.AuctionId;
             }
             else
             {
@@ -187,15 +191,15 @@ namespace AuctionPortal.Controllers
                 messageText = $"You removed lot #{favourite.InventoryAuctionId} from your favourites.";
             }
 
-            // 1) Persist in Notification table
             await AddNotificationRowAsync(
                 userId,
                 type: "favourite-deactivated",
                 title: titleText,
-                message: messageText
+                message: messageText,
+                auctionId: auctionId,
+                inventoryAuctionId: favourite.InventoryAuctionId
             );
 
-            // 2) Push realtime event via SignalR (same shape as before)
             await _hub.Clients
                 .User(userId.ToString())
                 .SendAsync("FavouriteDeactivated", new
@@ -205,6 +209,7 @@ namespace AuctionPortal.Controllers
                     inventoryAuctionId = favourite.InventoryAuctionId
                 });
         }
+
 
         #endregion
 

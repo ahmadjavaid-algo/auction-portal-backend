@@ -136,7 +136,7 @@ builder.Services.AddSingleton<IUserIdProvider, SignalRUserIdProvider>();
 
 // ⬇⬇ register the background worker (runs every N seconds; configured in appsettings)
 builder.Services.AddHostedService<AuctionStatusUpdater>();
-
+builder.Services.AddHostedService<FavouriteAlertsWorker>();
 var app = builder.Build();
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();

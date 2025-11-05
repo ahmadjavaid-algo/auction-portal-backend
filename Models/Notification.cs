@@ -18,5 +18,8 @@ namespace AuctionPortal.Models
         public bool IsRead { get; set; }
 
         public DateTime? ReadDate { get; set; }
+        public int? AuctionId { get; set; }
+
+        public int? InventoryAuctionId { get; set; }
     }
 }
