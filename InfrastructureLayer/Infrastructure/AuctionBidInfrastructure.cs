@@ -166,6 +166,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         /// <summary>
         /// GetList fetches and returns a list of bids (trimmed columns, ordered by CreatedDate desc).
         /// </summary>
+
         public async Task<List<AuctionBid>> GetList(AuctionBid _)
         {
             var items = new List<AuctionBid>();
@@ -187,6 +188,11 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
                             AuctionBidStatusName = reader.GetStringValue(AuctionBidStatusNameColumn),
 
+                            // ⬇⬇ pull audit fields so controller can see who placed the bid
+                            CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
                         };
 
@@ -200,6 +206,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
             return items;
         }
+
 
         /// <summary>
         /// Update updates an existing bid and returns true if successful.
