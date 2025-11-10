@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuctionPortal.Controllers
 {
-    [Authorize] // require JWT (same as FavouritesController)
+    [Authorize] // require JWT 
     public class NotificationsController : APIBaseController
     {
         #region Constructor
