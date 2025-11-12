@@ -22,7 +22,7 @@ namespace AuctionPortal.Workers
 
         // tweak windows as desired
         private static readonly TimeSpan StartingSoonWindow = TimeSpan.FromMinutes(15);
-        private static readonly TimeSpan EndingSoonWindow   = TimeSpan.FromMinutes(10);
+        private static readonly TimeSpan EndingSoonWindow = TimeSpan.FromMinutes(10);
 
         public FavouriteAlertsWorker(
             ILogger<FavouriteAlertsWorker> logger,
@@ -46,13 +46,14 @@ namespace AuctionPortal.Workers
                 {
                     using var scope = _scopeFactory.CreateScope();
 
-                    var favApp      = scope.ServiceProvider.GetRequiredService<IFavouriteApplication>();
-                    var invAucApp   = scope.ServiceProvider.GetRequiredService<IInventoryAuctionApplication>();
-                    var auctionApp  = scope.ServiceProvider.GetRequiredService<IAuctionApplication>();
-                    var notifApp    = scope.ServiceProvider.GetRequiredService<INotificationApplication>();
-                    var hub         = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
+                    var favApp = scope.ServiceProvider.GetRequiredService<IFavouriteApplication>();
+                    var invAucApp = scope.ServiceProvider.GetRequiredService<IInventoryAuctionApplication>();
+                    var auctionApp = scope.ServiceProvider.GetRequiredService<IAuctionApplication>();
+                    var notifApp = scope.ServiceProvider.GetRequiredService<INotificationApplication>();
+                    var adminNotifApp = scope.ServiceProvider.GetRequiredService<IAdminNotificationApplication>(); // NEW
+                    var hub = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
 
-                    await ProcessAsync(favApp, invAucApp, auctionApp, notifApp, hub, stoppingToken);
+                    await ProcessAsync(favApp, invAucApp, auctionApp, notifApp, adminNotifApp, hub, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -74,6 +75,7 @@ namespace AuctionPortal.Workers
             IInventoryAuctionApplication invAucApp,
             IAuctionApplication auctionApp,
             INotificationApplication notifApp,
+            IAdminNotificationApplication adminNotifApp, // NEW
             IHubContext<NotificationHub> hub,
             CancellationToken ct)
         {
@@ -121,10 +123,10 @@ namespace AuctionPortal.Workers
                         continue;
 
                     var startUtc = DateTimeOffset.FromUnixTimeMilliseconds(timebox.StartEpochMsUtc).UtcDateTime;
-                    var endUtc   = DateTimeOffset.FromUnixTimeMilliseconds(timebox.EndEpochMsUtc).UtcDateTime;
+                    var endUtc = DateTimeOffset.FromUnixTimeMilliseconds(timebox.EndEpochMsUtc).UtcDateTime;
 
                     var auctionName = timebox.AuctionName ?? "Auction";
-                    var titleBase   = $"{auctionName} — Lot #{invAuc.InventoryId}";
+                    var titleBase = $"{auctionName} — Lot #{invAuc.InventoryId}";
 
                     bool Has(string type) =>
                         existing.Any(n =>
@@ -138,8 +140,8 @@ namespace AuctionPortal.Workers
                         nowUtc < startUtc)
                     {
                         await CreateAndPushAsync(
-                            notifApp, hub, userId,
-                            type:  "auction-starting-soon",
+                            notifApp, adminNotifApp, hub, userId,
+                            type: "auction-starting-soon",
                             title: $"{titleBase} starting soon",
                             message: $"{titleBase} will start soon.",
                             auctionId: invAuc.AuctionId,
@@ -152,8 +154,8 @@ namespace AuctionPortal.Workers
                         nowUtc < startUtc.AddMinutes(5))
                     {
                         await CreateAndPushAsync(
-                            notifApp, hub, userId,
-                            type:  "auction-started",
+                            notifApp, adminNotifApp, hub, userId,
+                            type: "auction-started",
                             title: $"{titleBase} is now live",
                             message: $"{titleBase} auction has started.",
                             auctionId: invAuc.AuctionId,
@@ -166,8 +168,8 @@ namespace AuctionPortal.Workers
                         nowUtc < endUtc)
                     {
                         await CreateAndPushAsync(
-                            notifApp, hub, userId,
-                            type:  "auction-ending-soon",
+                            notifApp, adminNotifApp, hub, userId,
+                            type: "auction-ending-soon",
                             title: $"{titleBase} ending soon",
                             message: $"{titleBase} will end soon. Place your final bids.",
                             auctionId: invAuc.AuctionId,
@@ -179,8 +181,8 @@ namespace AuctionPortal.Workers
                         nowUtc >= endUtc)
                     {
                         await CreateAndPushAsync(
-                            notifApp, hub, userId,
-                            type:  "auction-ended",
+                            notifApp, adminNotifApp, hub, userId,
+                            type: "auction-ended",
                             title: $"{titleBase} ended",
                             message: $"{titleBase} auction has ended.",
                             auctionId: invAuc.AuctionId,
@@ -192,6 +194,7 @@ namespace AuctionPortal.Workers
 
         private static async Task CreateAndPushAsync(
             INotificationApplication notifApp,
+            IAdminNotificationApplication adminNotifApp,          // NEW
             IHubContext<NotificationHub> hub,
             int userId,
             string type,
@@ -200,6 +203,7 @@ namespace AuctionPortal.Workers
             int auctionId,
             int inventoryAuctionId)
         {
+            // Bidder notification
             var notification = new Notification
             {
                 UserId = userId,
@@ -214,10 +218,21 @@ namespace AuctionPortal.Workers
 
             await notifApp.Add(notification);
 
-            // Generic SignalR event for client to pick up
+            // Generic SignalR event for bidder client
             await hub.Clients
                 .User(userId.ToString())
                 .SendAsync("NotificationCreated", notification);
+
+            // Admin global notification
+            await AdminNotificationHelper.CreateAndBroadcastAsync(
+                adminNotifApp,
+                hub,
+                type: type,                     // reuse same type
+                title: title,
+                message: message,
+                affectedUserId: userId,
+                auctionId: auctionId,
+                inventoryAuctionId: inventoryAuctionId);
         }
     }
 }

@@ -47,6 +47,7 @@ namespace AuctionPortal.Workers
                     var invAucApp = scope.ServiceProvider.GetRequiredService<IInventoryAuctionApplication>();
                     var auctionApp = scope.ServiceProvider.GetRequiredService<IAuctionApplication>();
                     var notifApp = scope.ServiceProvider.GetRequiredService<INotificationApplication>();
+                    var adminNotifApp = scope.ServiceProvider.GetRequiredService<IAdminNotificationApplication>(); // NEW
                     var hub = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
 
                     // 1) Recalculate auction statuses (running/ended/etc.)
@@ -62,6 +63,7 @@ namespace AuctionPortal.Workers
                         invAucApp,
                         auctionApp,
                         notifApp,
+                        adminNotifApp,
                         hub,
                         stoppingToken);
                 }
@@ -87,13 +89,15 @@ namespace AuctionPortal.Workers
         /// Finds ended lots based on auction timebox and sends:
         ///   - "auction-won" to the winning bidder
         ///   - "auction-lost" to other bidders
-        /// Uses dedupe via NotificationApplication to avoid duplicates.
+        ///   - and admin notifications "inventory-sold"/"inventory-lost"
+        /// Uses dedupe via NotificationApplication to avoid duplicates to bidders.
         /// </summary>
         private static async Task ProcessAuctionResultsAsync(
             IAuctionBidApplication auctionBidApp,
             IInventoryAuctionApplication invAucApp,
             IAuctionApplication auctionApp,
             INotificationApplication notifApp,
+            IAdminNotificationApplication adminNotifApp,   // NEW
             IHubContext<NotificationHub> hub,
             CancellationToken ct)
         {
@@ -189,9 +193,10 @@ namespace AuctionPortal.Workers
                     })
                     .ToList();
 
-                // 1) Notify winner: "auction-won"
+                // 1) Notify winner: "auction-won" (bidder) + admin "inventory-sold"
                 await SendResultNotificationAsync(
                     notifApp,
+                    adminNotifApp,
                     hub,
                     userId: winnerUserId,
                     auctionId: auctionId,
@@ -201,13 +206,14 @@ namespace AuctionPortal.Workers
                     winningAmount: winningBid.BidAmount,
                     ct: ct);
 
-                // 2) Notify losers: "auction-lost"
+                // 2) Notify losers: "auction-lost" (bidder) + admin "inventory-lost"
                 foreach (var loser in losingUsers)
                 {
                     if (ct.IsCancellationRequested) return;
 
                     await SendResultNotificationAsync(
                         notifApp,
+                        adminNotifApp,
                         hub,
                         userId: loser.UserId,
                         auctionId: auctionId,
@@ -221,10 +227,12 @@ namespace AuctionPortal.Workers
         }
 
         /// <summary>
-        /// Dedupe + create + push 'auction-won' / 'auction-lost' notification for a user.
+        /// Dedupe + create + push 'auction-won' / 'auction-lost' notification for a user,
+        /// and creates/broadcasts admin notification ("inventory-sold"/"inventory-lost").
         /// </summary>
         private static async Task SendResultNotificationAsync(
             INotificationApplication notifApp,
+            IAdminNotificationApplication adminNotifApp,   // NEW
             IHubContext<NotificationHub> hub,
             int userId,
             int auctionId,
@@ -274,11 +282,32 @@ namespace AuctionPortal.Workers
                 InventoryAuctionId = inventoryAuctionId
             };
 
+            // Persist + push to bidder
             await notifApp.Add(notification);
 
             await hub.Clients
                 .User(userId.ToString())
                 .SendAsync("NotificationCreated", notification);
+
+            // --- Admin notification counterpart ---
+            var adminType = isWinner ? "inventory-sold" : "inventory-lost";
+            var adminTitle = isWinner
+                ? $"{titleBase} — Sold"
+                : $"{titleBase} — Auction ended";
+
+            var adminMessage = isWinner
+                ? $"Lot sold: {titleBase}. Winning bidder #{userId}, amount {winningAmount:N2}."
+                : $"Lot ended: {titleBase}. Bidder #{userId} did not win (final {winningAmount:N2}).";
+
+            await AdminNotificationHelper.CreateAndBroadcastAsync(
+                adminNotifApp,
+                hub,
+                type: adminType,
+                title: adminTitle,
+                message: adminMessage,
+                affectedUserId: userId,
+                auctionId: auctionId,
+                inventoryAuctionId: inventoryAuctionId);
         }
     }
 }
