@@ -1,42 +1,36 @@
-﻿// AuctionPortal.InfrastructureLayer.Infrastructure/NotificationInfrastructure.cs
-using AuctionPortal.Common.Infrastructure;
+﻿using AuctionPortal.Common.Infrastructure;
 using AuctionPortal.InfrastructureLayer.Interfaces;
 using AuctionPortal.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Threading.Tasks;
 
 namespace AuctionPortal.InfrastructureLayer.Infrastructure
 {
     /// <summary>
-    /// Infrastructure for user notifications (Notification).
+    /// Infrastructure for user notifications.
+    /// Mirrors RoleInfrastructure style (no helpers; inline mapping; output param on Add).
     /// </summary>
     public class NotificationInfrastructure : BaseInfrastructure, INotificationInfrastructure
     {
         #region Constructor
-
-        public NotificationInfrastructure(IConfiguration configuration, ILogger<NotificationInfrastructure> logger)
+        public NotificationInfrastructure(
+            IConfiguration configuration,
+            ILogger<NotificationInfrastructure> logger)
             : base(configuration, logger)
         {
         }
-
         #endregion
 
-        #region Constants – stored procedure names
-
+        #region Constants – Stored Procedure Names
         private const string AddStoredProcedureName = "[dbo].[sp_Notification_Add]";
         private const string GetForUserStoredProcedureName = "[dbo].[sp_Notification_GetForUser]";
         private const string MarkAllReadStoredProcedureName = "[dbo].[sp_Notification_MarkAllRead]";
         private const string ClearAllStoredProcedureName = "[dbo].[sp_Notification_ClearAll]";
-
         #endregion
 
-        #region Constants – column names
-
+        #region Constants – Column Names
         private const string NotificationIdColumnName = "NotificationId";
         private const string UserIdColumnName = "UserId";
         private const string TypeColumnName = "Type";
@@ -45,12 +39,11 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string IsReadColumnName = "IsRead";
         private const string ReadDateColumnName = "ReadDate";
         private const string AuctionIdColumnName = "AuctionId";
-        private const string InventoryAuctionIdColName = "InventoryAuctionId";
-
+        private const string InventoryAuctionIdColumnName = "InventoryAuctionId";
         #endregion
 
-        #region Constants – parameter names
-
+        #region Constants – Parameter Names
+        private const string NotificationIdParameterName = "@NotificationId";
         private const string UserIdParameterName = "@UserId";
         private const string TypeParameterName = "@Type";
         private const string TitleParameterName = "@Title";
@@ -63,54 +56,39 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string ModifiedByIdParameterName = "@ModifiedById";
         private const string AuctionIdParameterName = "@AuctionId";
         private const string InventoryAuctionIdParameterName = "@InventoryAuctionId";
-
         #endregion
 
         #region INotificationInfrastructure Implementation
 
         /// <summary>
-        /// Add inserts a new notification and returns the generated NotificationId.
+        /// Inserts a new notification and returns generated NotificationId.
         /// </summary>
         public async Task<int> Add(Notification notification)
         {
+            var idOut = base.GetParameterOut(NotificationIdParameterName, SqlDbType.Int, notification.NotificationId);
+
             var parameters = new List<DbParameter>
             {
-                GetParameter(UserIdParameterName,            notification.UserId),
-                GetParameter(TypeParameterName,              notification.Type ?? string.Empty),
-                GetParameter(TitleParameterName,             notification.Title ?? string.Empty),
-                GetParameter(MessageParameterName,           notification.Message ?? string.Empty),
-                GetParameter(IsReadParameterName,            notification.IsRead),
-                GetParameter(ReadDateParameterName,
-                    notification.ReadDate.HasValue
-                        ? (object)notification.ReadDate.Value
-                        : DBNull.Value),
-                GetParameter(CreatedByIdParameterName,       notification.CreatedById),
-                GetParameter(AuctionIdParameterName,
-                    notification.AuctionId.HasValue
-                        ? (object)notification.AuctionId.Value
-                        : DBNull.Value),
-                GetParameter(InventoryAuctionIdParameterName,
-                    notification.InventoryAuctionId.HasValue
-                        ? (object)notification.InventoryAuctionId.Value
-                        : DBNull.Value)
+                idOut,
+                base.GetParameter(UserIdParameterName,              notification.UserId),
+                base.GetParameter(TypeParameterName,                notification.Type ?? string.Empty),
+                base.GetParameter(TitleParameterName,               notification.Title ?? string.Empty),
+                base.GetParameter(MessageParameterName,             notification.Message ?? string.Empty),
+                base.GetParameter(IsReadParameterName,              notification.IsRead),
+                base.GetParameter(ReadDateParameterName,            notification.ReadDate.HasValue ? (object)notification.ReadDate.Value : DBNull.Value),
+                base.GetParameter(CreatedByIdParameterName,         notification.CreatedById),
+                base.GetParameter(AuctionIdParameterName,           notification.AuctionId.HasValue ? (object)notification.AuctionId.Value : DBNull.Value),
+                base.GetParameter(InventoryAuctionIdParameterName,  notification.InventoryAuctionId.HasValue ? (object)notification.InventoryAuctionId.Value : DBNull.Value)
             };
 
-            using (var reader = await ExecuteReader(parameters, AddStoredProcedureName, CommandType.StoredProcedure))
-            {
-                if (reader != null && reader.HasRows && reader.Read())
-                {
-                    MapNotification(reader, notification);
-                }
+            await base.ExecuteNonQuery(parameters, AddStoredProcedureName, CommandType.StoredProcedure);
 
-                if (reader != null && !reader.IsClosed)
-                    reader.Close();
-            }
-
+            notification.NotificationId = Convert.ToInt32(idOut.Value);
             return notification.NotificationId;
         }
 
         /// <summary>
-        /// GetForUser fetches notifications for a given user.
+        /// Returns notifications for a user (optionally only unread; limited by top).
         /// </summary>
         public async Task<List<Notification>> GetForUser(int userId, bool unreadOnly = false, int top = 50)
         {
@@ -118,112 +96,143 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
             var parameters = new List<DbParameter>
             {
-                GetParameter(UserIdParameterName,     userId),
-                GetParameter(UnreadOnlyParameterName, unreadOnly),
-                GetParameter(TopParameterName,        top)
+                base.GetParameter(UserIdParameterName,     userId),
+                base.GetParameter(UnreadOnlyParameterName, unreadOnly),
+                base.GetParameter(TopParameterName,        top)
             };
 
-            using (var reader = await ExecuteReader(parameters, GetForUserStoredProcedureName, CommandType.StoredProcedure))
+            using (var dr = await base.ExecuteReader(parameters, GetForUserStoredProcedureName, CommandType.StoredProcedure))
             {
-                if (reader != null)
+                if (dr != null)
                 {
-                    while (reader.Read())
+                    while (dr.Read())
                     {
-                        var item = new Notification();
-                        MapNotification(reader, item);
-                        items.Add(item);
+                        var row = new Notification
+                        {
+                            NotificationId = dr.GetIntegerValue(NotificationIdColumnName),
+                            UserId = dr.GetIntegerValue(UserIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
+
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!dr.IsClosed) dr.Close();
                 }
             }
 
             return items;
         }
 
+        /// <summary>
+        /// Marks all notifications for a user as read; returns the (updated) list per SP behavior.
+        /// </summary>
         public async Task<List<Notification>> MarkAllRead(int userId, int? modifiedById)
         {
             var items = new List<Notification>();
 
             var parameters = new List<DbParameter>
             {
-                GetParameter(UserIdParameterName,       userId),
-                GetParameter(ModifiedByIdParameterName, (object?)modifiedById ?? DBNull.Value)
+                base.GetParameter(UserIdParameterName,       userId),
+                base.GetParameter(ModifiedByIdParameterName, (object?)modifiedById ?? DBNull.Value)
             };
 
-            using (var reader = await ExecuteReader(parameters, MarkAllReadStoredProcedureName, CommandType.StoredProcedure))
+            using (var dr = await base.ExecuteReader(parameters, MarkAllReadStoredProcedureName, CommandType.StoredProcedure))
             {
-                if (reader != null)
+                if (dr != null)
                 {
-                    while (reader.Read())
+                    while (dr.Read())
                     {
-                        var item = new Notification();
-                        MapNotification(reader, item);
-                        items.Add(item);
+                        var row = new Notification
+                        {
+                            NotificationId = dr.GetIntegerValue(NotificationIdColumnName),
+                            UserId = dr.GetIntegerValue(UserIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
+
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!dr.IsClosed) dr.Close();
                 }
             }
 
             return items;
         }
 
+        /// <summary>
+        /// Clears (soft-deletes) all notifications for a user; returns list per SP behavior.
+        /// </summary>
         public async Task<List<Notification>> ClearAll(int userId, int? modifiedById)
         {
             var items = new List<Notification>();
 
             var parameters = new List<DbParameter>
             {
-                GetParameter(UserIdParameterName,       userId),
-                GetParameter(ModifiedByIdParameterName, (object?)modifiedById ?? DBNull.Value)
+                base.GetParameter(UserIdParameterName,       userId),
+                base.GetParameter(ModifiedByIdParameterName, (object?)modifiedById ?? DBNull.Value)
             };
 
-            using (var reader = await ExecuteReader(parameters, ClearAllStoredProcedureName, CommandType.StoredProcedure))
+            using (var dr = await base.ExecuteReader(parameters, ClearAllStoredProcedureName, CommandType.StoredProcedure))
             {
-                if (reader != null)
+                if (dr != null)
                 {
-                    while (reader.Read())
+                    while (dr.Read())
                     {
-                        var item = new Notification();
-                        MapNotification(reader, item);
-                        items.Add(item);
+                        var row = new Notification
+                        {
+                            NotificationId = dr.GetIntegerValue(NotificationIdColumnName),
+                            UserId = dr.GetIntegerValue(UserIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
+
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!dr.IsClosed) dr.Close();
                 }
             }
 
             return items;
-        }
-
-        #endregion
-
-        #region Helpers
-
-        private static void MapNotification(DbDataReader reader, Notification target)
-        {
-            if (target == null) throw new ArgumentNullException(nameof(target));
-
-            target.NotificationId = reader.GetIntegerValue(NotificationIdColumnName);
-            target.UserId = reader.GetIntegerValue(UserIdColumnName);
-            target.Type = reader.GetStringValue(TypeColumnName);
-            target.Title = reader.GetStringValue(TitleColumnName);
-            target.Message = reader.GetStringValue(MessageColumnName);
-            target.IsRead = reader.GetBooleanValue(IsReadColumnName);
-            target.ReadDate = reader.GetDateTimeValueNullable(ReadDateColumnName);
-
-            target.CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName);
-            target.CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName);
-            target.ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0;
-            target.ModifiedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName);
-            target.Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName);
-
-            target.AuctionId = reader.GetIntegerValueNullable(AuctionIdColumnName);
-            target.InventoryAuctionId = reader.GetIntegerValueNullable(InventoryAuctionIdColName);
         }
 
         #endregion

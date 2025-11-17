@@ -47,5 +47,7 @@ namespace AuctionPortal.ApplicationLayer.Application
         /// </summary>
         public Task<List<AdminNotification>> ClearAll(int? modifiedById) =>
             Infrastructure.ClearAll(modifiedById);
+        public Task<List<AdminNotification>> GetHistory(int top = 200) =>
+            Infrastructure.GetHistory(top);
     }
 }

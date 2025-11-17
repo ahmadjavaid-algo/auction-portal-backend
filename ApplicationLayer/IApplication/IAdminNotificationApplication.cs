@@ -17,5 +17,6 @@ namespace AuctionPortal.ApplicationLayer.IApplication
         Task<List<AdminNotification>> MarkAllRead(int? modifiedById);
 
         Task<List<AdminNotification>> ClearAll(int? modifiedById);
+        Task<List<AdminNotification>> GetHistory(int top = 200);
     }
 }

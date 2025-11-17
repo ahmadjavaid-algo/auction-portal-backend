@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuctionPortal.Controllers
 {
-    [Authorize] // app-user login (admin portal)
+    
     public class AdminNotificationsController : APIBaseController
     {
         public IAdminNotificationApplication AdminNotificationApplication { get; }
@@ -57,5 +57,8 @@ namespace AuctionPortal.Controllers
             var updated = await AdminNotificationApplication.ClearAll(null);
             return updated;
         }
+        [HttpGet("history")]
+        public Task<List<AdminNotification>> History([FromQuery] int top = 200) =>
+            AdminNotificationApplication.GetHistory(top);
     }
 }

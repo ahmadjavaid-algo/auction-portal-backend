@@ -3,218 +3,283 @@ using AuctionPortal.InfrastructureLayer.Interfaces;
 using AuctionPortal.Models;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using System;
-using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Threading.Tasks;
 
 namespace AuctionPortal.InfrastructureLayer.Infrastructure
 {
     /// <summary>
-    /// Infrastructure for admin notifications (global).
+    /// Infrastructure for admin (global) notifications.
+    /// Mirrors RoleInfrastructure style: no helper mappers, inline object inits.
     /// </summary>
     public class AdminNotificationInfrastructure : BaseInfrastructure, IAdminNotificationInfrastructure
     {
+        #region Constructor
         public AdminNotificationInfrastructure(
             IConfiguration configuration,
             ILogger<AdminNotificationInfrastructure> logger)
             : base(configuration, logger)
         {
         }
-
-        #region SP names
-
-        private const string AddSpName = "[dbo].[sp_AdminNotification_Add]";
-        private const string GetAllSpName = "[dbo].[sp_AdminNotification_GetAll]";
-        private const string MarkAllReadSpName = "[dbo].[sp_AdminNotification_MarkAllRead]";
-        private const string ClearAllSpName = "[dbo].[sp_AdminNotification_ClearAll]";
-
         #endregion
 
-        #region Column names
-
-        private const string IdCol = "AdminNotificationId";
-        private const string TypeCol = "Type";
-        private const string TitleCol = "Title";
-        private const string MessageCol = "Message";
-        private const string IsReadCol = "IsRead";
-        private const string ReadDateCol = "ReadDate";
-        private const string AffectedUserIdCol = "AffectedUserId";
-        private const string AuctionIdCol = "AuctionId";
-        private const string InventoryAuctionIdCol = "InventoryAuctionId";
-
+        #region Constants - Stored Procedure Names
+        private const string AddStoredProcedureName = "[dbo].[sp_AdminNotification_Add]";
+        private const string GetAllStoredProcedureName = "[dbo].[sp_AdminNotification_GetAll]";
+        private const string MarkAllReadStoredProcedureName = "[dbo].[sp_AdminNotification_MarkAllRead]";
+        private const string ClearAllStoredProcedureName = "[dbo].[sp_AdminNotification_ClearAll]";
+        private const string GetHistoryStoredProcedureName = "[dbo].[sp_AdminNotification_GetHistory]";
         #endregion
 
-        #region Parameter names
+        #region Constants - Column Names
+        private const string AdminNotificationIdColumnName = "AdminNotificationId";
+        private const string TypeColumnName = "Type";
+        private const string TitleColumnName = "Title";
+        private const string MessageColumnName = "Message";
+        private const string IsReadColumnName = "IsRead";
+        private const string ReadDateColumnName = "ReadDate";
+        private const string AffectedUserIdColumnName = "AffectedUserId";
+        private const string AuctionIdColumnName = "AuctionId";
+        private const string InventoryAuctionIdColumnName = "InventoryAuctionId";
+        #endregion
 
-        private const string TypeParam = "@Type";
-        private const string TitleParam = "@Title";
-        private const string MessageParam = "@Message";
-        private const string IsReadParam = "@IsRead";
-        private const string ReadDateParam = "@ReadDate";
-        private const string CreatedByIdParam = "@CreatedById";
-        private const string ModifiedByIdParam = "@ModifiedById";
-        private const string UnreadOnlyParam = "@UnreadOnly";
-        private const string TopParam = "@Top";
-        private const string AffectedUserIdParam = "@AffectedUserId";
-        private const string AuctionIdParam = "@AuctionId";
-        private const string InventoryAuctionIdParam = "@InventoryAuctionId";
-
+        #region Constants - Parameter Names
+        private const string AdminNotificationIdParameterName = "@AdminNotificationId";
+        private const string TypeParameterName = "@Type";
+        private const string TitleParameterName = "@Title";
+        private const string MessageParameterName = "@Message";
+        private const string IsReadParameterName = "@IsRead";
+        private const string ReadDateParameterName = "@ReadDate";
+        private const string CreatedByIdParameterName = "@CreatedById";
+        private const string ModifiedByIdParameterName = "@ModifiedById";
+        private const string UnreadOnlyParameterName = "@UnreadOnly";
+        private const string TopParameterName = "@Top";
+        private const string AffectedUserIdParameterName = "@AffectedUserId";
+        private const string AuctionIdParameterName = "@AuctionId";
+        private const string InventoryAuctionIdParameterName = "@InventoryAuctionId";
         #endregion
 
         #region IAdminNotificationInfrastructure
 
-        public async Task<int> Add(AdminNotification notification)
+        /// <summary>
+        /// Inserts a new admin notification and returns generated AdminNotificationId.
+        /// </summary>
+        public async Task<int> Add(AdminNotification entity)
         {
+            // Prefer output param pattern (RoleInfrastructure style).
+            var idOut = base.GetParameterOut(AdminNotificationIdParameterName, SqlDbType.Int, entity.AdminNotificationId);
+
             var parameters = new List<DbParameter>
             {
-                GetParameter(TypeParam,    notification.Type ?? string.Empty),
-                GetParameter(TitleParam,   notification.Title ?? string.Empty),
-                GetParameter(MessageParam, notification.Message ?? string.Empty),
-                GetParameter(IsReadParam,  notification.IsRead),
-                GetParameter(ReadDateParam,
-                    notification.ReadDate.HasValue
-                        ? (object)notification.ReadDate.Value
-                        : DBNull.Value),
-                GetParameter(CreatedByIdParam, notification.CreatedById),
-                GetParameter(AffectedUserIdParam,
-                    notification.AffectedUserId.HasValue
-                        ? (object)notification.AffectedUserId.Value
-                        : DBNull.Value),
-                GetParameter(AuctionIdParam,
-                    notification.AuctionId.HasValue
-                        ? (object)notification.AuctionId.Value
-                        : DBNull.Value),
-                GetParameter(InventoryAuctionIdParam,
-                    notification.InventoryAuctionId.HasValue
-                        ? (object)notification.InventoryAuctionId.Value
-                        : DBNull.Value)
+                idOut,
+                base.GetParameter(TypeParameterName,               entity.Type ?? string.Empty),
+                base.GetParameter(TitleParameterName,              entity.Title ?? string.Empty),
+                base.GetParameter(MessageParameterName,            entity.Message ?? string.Empty),
+                base.GetParameter(IsReadParameterName,             entity.IsRead),
+                base.GetParameter(ReadDateParameterName,           entity.ReadDate.HasValue ? (object)entity.ReadDate.Value : DBNull.Value),
+                base.GetParameter(CreatedByIdParameterName,        entity.CreatedById),
+                base.GetParameter(AffectedUserIdParameterName,     entity.AffectedUserId.HasValue ? (object)entity.AffectedUserId.Value : DBNull.Value),
+                base.GetParameter(AuctionIdParameterName,          entity.AuctionId.HasValue ? (object)entity.AuctionId.Value : DBNull.Value),
+                base.GetParameter(InventoryAuctionIdParameterName, entity.InventoryAuctionId.HasValue ? (object)entity.InventoryAuctionId.Value : DBNull.Value)
             };
 
-            using (var reader = await ExecuteReader(parameters, AddSpName, CommandType.StoredProcedure))
-            {
-                if (reader != null && reader.HasRows && reader.Read())
-                {
-                    Map(reader, notification);
-                }
+            await base.ExecuteNonQuery(parameters, AddStoredProcedureName, CommandType.StoredProcedure);
 
-                if (reader != null && !reader.IsClosed)
-                    reader.Close();
-            }
-
-            return notification.AdminNotificationId;
+            entity.AdminNotificationId = Convert.ToInt32(idOut.Value);
+            return entity.AdminNotificationId;
         }
 
+        /// <summary>
+        /// Returns admin notifications. When unreadOnly = true, only unread are returned.
+        /// </summary>
         public async Task<List<AdminNotification>> GetList(bool unreadOnly = false, int top = 50)
         {
             var items = new List<AdminNotification>();
 
             var parameters = new List<DbParameter>
             {
-                GetParameter(UnreadOnlyParam, unreadOnly),
-                GetParameter(TopParam,        top)
+                base.GetParameter(UnreadOnlyParameterName, unreadOnly),
+                base.GetParameter(TopParameterName,        top)
             };
 
-            using (var reader = await ExecuteReader(parameters, GetAllSpName, CommandType.StoredProcedure))
+            using (var dr = await base.ExecuteReader(parameters, GetAllStoredProcedureName, CommandType.StoredProcedure))
             {
-                if (reader != null)
+                if (dr != null)
                 {
-                    while (reader.Read())
+                    while (dr.Read())
                     {
-                        var item = new AdminNotification();
-                        Map(reader, item);
-                        items.Add(item);
+                        var row = new AdminNotification
+                        {
+                            AdminNotificationId = dr.GetIntegerValue(AdminNotificationIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
+
+                            AffectedUserId = dr.GetIntegerValueNullable(AffectedUserIdColumnName),
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!dr.IsClosed) dr.Close();
                 }
             }
 
             return items;
         }
 
+        /// <summary>
+        /// Marks all admin notifications as read and returns updated list.
+        /// </summary>
         public async Task<List<AdminNotification>> MarkAllRead(int? modifiedById)
         {
             var items = new List<AdminNotification>();
 
             var parameters = new List<DbParameter>
             {
-                GetParameter(ModifiedByIdParam, (object?)modifiedById ?? DBNull.Value)
+                base.GetParameter(ModifiedByIdParameterName, (object?)modifiedById ?? DBNull.Value)
             };
 
-            using (var reader = await ExecuteReader(parameters, MarkAllReadSpName, CommandType.StoredProcedure))
+            using (var dr = await base.ExecuteReader(parameters, MarkAllReadStoredProcedureName, CommandType.StoredProcedure))
             {
-                if (reader != null)
+                if (dr != null)
                 {
-                    while (reader.Read())
+                    while (dr.Read())
                     {
-                        var item = new AdminNotification();
-                        Map(reader, item);
-                        items.Add(item);
+                        var row = new AdminNotification
+                        {
+                            AdminNotificationId = dr.GetIntegerValue(AdminNotificationIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
+
+                            AffectedUserId = dr.GetIntegerValueNullable(AffectedUserIdColumnName),
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!dr.IsClosed) dr.Close();
                 }
             }
 
             return items;
         }
 
+        /// <summary>
+        /// Clears (soft-deletes) all admin notifications and returns remaining (usually empty).
+        /// </summary>
         public async Task<List<AdminNotification>> ClearAll(int? modifiedById)
         {
             var items = new List<AdminNotification>();
 
             var parameters = new List<DbParameter>
             {
-                GetParameter(ModifiedByIdParam, (object?)modifiedById ?? DBNull.Value)
+                base.GetParameter(ModifiedByIdParameterName, (object?)modifiedById ?? DBNull.Value)
             };
 
-            using (var reader = await ExecuteReader(parameters, ClearAllSpName, CommandType.StoredProcedure))
+            using (var dr = await base.ExecuteReader(parameters, ClearAllStoredProcedureName, CommandType.StoredProcedure))
             {
-                if (reader != null)
+                if (dr != null)
                 {
-                    while (reader.Read())
+                    while (dr.Read())
                     {
-                        var item = new AdminNotification();
-                        Map(reader, item);
-                        items.Add(item);
+                        var row = new AdminNotification
+                        {
+                            AdminNotificationId = dr.GetIntegerValue(AdminNotificationIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
+
+                            AffectedUserId = dr.GetIntegerValueNullable(AffectedUserIdColumnName),
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
                     }
 
-                    if (!reader.IsClosed)
-                        reader.Close();
+                    if (!dr.IsClosed) dr.Close();
                 }
             }
 
             return items;
         }
 
-        #endregion
-
-        #region Helpers
-
-        private static void Map(DbDataReader reader, AdminNotification target)
+        /// <summary>
+        /// Returns the historical list of admin notifications (independent of read/clear UI state).
+        /// </summary>
+        public async Task<List<AdminNotification>> GetHistory(int top = 200)
         {
-            if (target == null) throw new ArgumentNullException(nameof(target));
+            var items = new List<AdminNotification>();
 
-            target.AdminNotificationId = reader.GetIntegerValue(IdCol);
-            target.Type = reader.GetStringValue(TypeCol);
-            target.Title = reader.GetStringValue(TitleCol);
-            target.Message = reader.GetStringValue(MessageCol);
-            target.IsRead = reader.GetBooleanValue(IsReadCol);
-            target.ReadDate = reader.GetDateTimeValueNullable(ReadDateCol);
+            var parameters = new List<DbParameter>
+            {
+                base.GetParameter(TopParameterName, top)
+            };
 
-            target.AffectedUserId = reader.GetIntegerValueNullable(AffectedUserIdCol);
-            target.AuctionId = reader.GetIntegerValueNullable(AuctionIdCol);
-            target.InventoryAuctionId = reader.GetIntegerValueNullable(InventoryAuctionIdCol);
+            using (var dr = await base.ExecuteReader(parameters, GetHistoryStoredProcedureName, CommandType.StoredProcedure))
+            {
+                if (dr != null)
+                {
+                    while (dr.Read())
+                    {
+                        var row = new AdminNotification
+                        {
+                            AdminNotificationId = dr.GetIntegerValue(AdminNotificationIdColumnName),
+                            Type = dr.GetStringValue(TypeColumnName),
+                            Title = dr.GetStringValue(TitleColumnName),
+                            Message = dr.GetStringValue(MessageColumnName),
+                            IsRead = dr.GetBooleanValue(IsReadColumnName),
+                            ReadDate = dr.GetDateTimeValueNullable(ReadDateColumnName),
 
-            target.CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName);
-            target.CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName);
-            target.ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0;
-            target.ModifiedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName);
-            target.Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName);
+                            AffectedUserId = dr.GetIntegerValueNullable(AffectedUserIdColumnName),
+                            AuctionId = dr.GetIntegerValueNullable(AuctionIdColumnName),
+                            InventoryAuctionId = dr.GetIntegerValueNullable(InventoryAuctionIdColumnName),
+
+                            CreatedById = dr.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
+                            CreatedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
+                            ModifiedById = dr.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
+                            ModifiedDate = dr.GetDateTimeValueNullable(BaseInfrastructure.ModifiedDateColumnName),
+                            Active = dr.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
+                        };
+
+                        items.Add(row);
+                    }
+
+                    if (!dr.IsClosed) dr.Close();
+                }
+            }
+
+            return items;
         }
 
         #endregion
