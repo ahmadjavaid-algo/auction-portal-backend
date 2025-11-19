@@ -98,10 +98,7 @@ namespace AuctionPortal.ApplicationLayer.Application
 
         #region Use-case Methods (with notifications and SignalR)
 
-        /// <summary>
-        /// Adds a favourite for a specific user and sends "favourite-added" notification
-        /// plus real-time SignalR event.
-        /// </summary>
+    
         public async Task<int> AddForUser(Favourite entity, int userId)
         {
             entity.UserId = userId;
@@ -114,10 +111,7 @@ namespace AuctionPortal.ApplicationLayer.Application
             return favouriteId;
         }
 
-        /// <summary>
-        /// Toggles Active for a favourite and sends appropriate notifications
-        /// (favourite-added on reactivation, favourite-deactivated on removal).
-        /// </summary>
+  
         public async Task<bool> ToggleActiveForUser(Favourite entity, int userId)
         {
             var success = await FavouriteInfrastructure.Activate(entity);
@@ -126,7 +120,7 @@ namespace AuctionPortal.ApplicationLayer.Application
                 return false;
             }
 
-            // Reload so we have full data such as InventoryAuctionId
+       
             var dbFavourite = await FavouriteInfrastructure.Get(new Favourite
             {
                 BidderInventoryAuctionFavoriteId = entity.BidderInventoryAuctionFavoriteId
@@ -134,13 +128,13 @@ namespace AuctionPortal.ApplicationLayer.Application
 
             if (dbFavourite == null)
             {
-                // State has been toggled but row is not found, nothing more to do
+                
                 return true;
             }
 
             if (entity.Active)
             {
-                // Re-activated: treat as added again
+               
                 await SendFavouriteAddedNotification(
                     userId,
                     dbFavourite.BidderInventoryAuctionFavoriteId,
@@ -148,7 +142,7 @@ namespace AuctionPortal.ApplicationLayer.Application
             }
             else
             {
-                // Deactivated: send removal notification
+                
                 await SendFavouriteRemovedNotification(userId, dbFavourite);
             }
 
@@ -159,9 +153,7 @@ namespace AuctionPortal.ApplicationLayer.Application
 
         #region Private Helpers
 
-        /// <summary>
-        /// Persists a Notification row in the DB.
-        /// </summary>
+  
         private async Task<int> AddNotificationRow(
             int userId,
             string type,
@@ -186,11 +178,7 @@ namespace AuctionPortal.ApplicationLayer.Application
             return id;
         }
 
-        /// <summary>
-        /// Builds a FavouriteNotification, stores a "favourite-added" Notification row,
-        /// and pushes a "FavouriteAdded" SignalR event.
-        /// Used for both first-time add and re-activation.
-        /// </summary>
+
         private async Task SendFavouriteAddedNotification(
             int userId,
             int favouriteId,
@@ -260,10 +248,7 @@ namespace AuctionPortal.ApplicationLayer.Application
                 .SendAsync("FavouriteAdded", favouriteNotification);
         }
 
-        /// <summary>
-        /// Creates and stores a "favourite-deactivated" Notification row and pushes
-        /// a "FavouriteDeactivated" SignalR event.
-        /// </summary>
+
         private async Task SendFavouriteRemovedNotification(
             int userId,
             Favourite favourite)

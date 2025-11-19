@@ -1,4 +1,4 @@
-// AuctionPortal.Hubs/AdminNotificationHelper.cs
+
 using System.Threading.Tasks;
 using AuctionPortal.ApplicationLayer.IApplication;
 using AuctionPortal.Models;

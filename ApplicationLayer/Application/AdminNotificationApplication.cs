@@ -9,8 +9,7 @@ using Microsoft.Extensions.Configuration;
 namespace AuctionPortal.ApplicationLayer.Application
 {
     /// <summary>
-    /// Application layer for admin (global) notifications.
-    /// Thin wrapper over IAdminNotificationInfrastructure.
+    /// Application layer for admin notifications
     /// </summary>
     public class AdminNotificationApplication : BaseApplication, IAdminNotificationApplication
     {
@@ -24,30 +23,29 @@ namespace AuctionPortal.ApplicationLayer.Application
 
         public IAdminNotificationInfrastructure Infrastructure { get; }
 
-        /// <summary>
-        /// Adds a new admin notification and returns the generated AdminNotificationId.
-        /// </summary>
-        public Task<int> Add(AdminNotification entity) =>
-            Infrastructure.Add(entity);
+        public Task<int> Add(AdminNotification entity)
+        {
+            return Infrastructure.Add(entity);
+        }
 
-        /// <summary>
-        /// Returns admin notifications (optionally unread-only).
-        /// </summary>
-        public Task<List<AdminNotification>> GetList(bool unreadOnly = false, int top = 50) =>
-            Infrastructure.GetList(unreadOnly, top);
+        public Task<List<AdminNotification>> GetList(bool unreadOnly = false, int top = 50)
+        {
+            return Infrastructure.GetList(unreadOnly, top);
+        }
 
-        /// <summary>
-        /// Marks all admin notifications as read and returns the updated list.
-        /// </summary>
-        public Task<List<AdminNotification>> MarkAllRead(int? modifiedById) =>
-            Infrastructure.MarkAllRead(modifiedById);
+        public Task<List<AdminNotification>> MarkAllRead(int? modifiedById)
+        {
+            return Infrastructure.MarkAllRead(modifiedById);
+        }
 
-        /// <summary>
-        /// Clears (soft-deletes) all admin notifications and returns the updated list.
-        /// </summary>
-        public Task<List<AdminNotification>> ClearAll(int? modifiedById) =>
-            Infrastructure.ClearAll(modifiedById);
-        public Task<List<AdminNotification>> GetHistory(int top = 200) =>
-            Infrastructure.GetHistory(top);
+        public Task<List<AdminNotification>> ClearAll(int? modifiedById)
+        {
+            return Infrastructure.ClearAll(modifiedById);
+        }
+
+        public Task<List<AdminNotification>> GetHistory(int top = 200)
+        {
+            return Infrastructure.GetHistory(top);
+        }
     }
 }

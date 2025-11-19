@@ -10,14 +10,12 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuctionPortal.Controllers
 {
-    [Authorize] // require JWT 
+   
     public class NotificationsController : APIBaseController
     {
         #region Constructor
 
-        /// <summary>
-        /// NotificationsController initializes class object.
-        /// </summary>
+ 
         public NotificationsController(
             INotificationApplication notificationApplication,
             IHeaderValue headerValue,
@@ -37,9 +35,7 @@ namespace AuctionPortal.Controllers
 
         #region Helpers
 
-        /// <summary>
-        /// Gets current userId from JWT claims.
-        /// </summary>
+
         private int GetCurrentUserId()
         {
             var claim = User.FindFirst(ClaimsConstants.UserIdClaimType)
@@ -52,10 +48,6 @@ namespace AuctionPortal.Controllers
 
         #region Endpoints
 
-        /// <summary>
-        /// Returns notifications for the current user (optionally unread-only).
-        /// GET /api/Notifications/list?unreadOnly=true&top=50
-        /// </summary>
         [HttpGet("list")]
         public async Task<List<Notification>> GetForCurrentUser(
             [FromQuery] bool unreadOnly = false,
@@ -64,8 +56,7 @@ namespace AuctionPortal.Controllers
             var userId = GetCurrentUserId();
             if (userId <= 0)
             {
-                // Should not normally happen because of [Authorize],
-                // but we guard anyway.
+             
                 return new List<Notification>();
             }
 
@@ -73,10 +64,7 @@ namespace AuctionPortal.Controllers
             return notifications;
         }
 
-        /// <summary>
-        /// Marks all notifications for the current user as read and returns the updated list.
-        /// POST /api/Notifications/mark-all-read
-        /// </summary>
+
         [HttpPost("mark-all-read")]
         public async Task<List<Notification>> MarkAllRead()
         {
@@ -90,10 +78,7 @@ namespace AuctionPortal.Controllers
             return updated;
         }
 
-        /// <summary>
-        /// Clears (soft-deletes) all notifications for the current user and returns the updated list (usually empty).
-        /// POST /api/Notifications/clear-all
-        /// </summary>
+
         [HttpPost("clear-all")]
         public async Task<List<Notification>> ClearAll()
         {

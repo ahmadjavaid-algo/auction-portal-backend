@@ -96,7 +96,7 @@ namespace AuctionPortal.ApplicationLayer.Application
                 var uiBase = Configuration["Client:BaseUrl"] ?? "http://localhost:4200";
                 var resetPath = Configuration["Client:ResetPath"] ?? "/admin/auth/reset-password";
 
-                // Ensure exactly one slash between base and path
+               
                 var basePart = uiBase.TrimEnd('/');
                 var pathPart = resetPath.StartsWith("/") ? resetPath : "/" + resetPath;
 

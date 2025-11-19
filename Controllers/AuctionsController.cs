@@ -11,9 +11,7 @@ namespace AuctionPortal.Controllers
     public class AuctionsController : APIBaseController
     {
         #region Constructor
-        /// <summary>
-        /// AuctionsController initializes class object.
-        /// </summary>
+
         public AuctionsController(IAuctionApplication AuctionApplication, IHeaderValue headerValue, IConfiguration configuration)
             : base(headerValue, configuration)
         {

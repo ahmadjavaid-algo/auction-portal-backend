@@ -20,6 +20,10 @@ namespace AuctionPortal.Workers
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly TimeSpan _interval;
 
+        // Windows for lifecycle admin notifications
+        private static readonly TimeSpan StartingSoonWindow = TimeSpan.FromMinutes(15);
+        private static readonly TimeSpan EndingSoonWindow = TimeSpan.FromMinutes(10);
+
         public AuctionStatusUpdater(
             ILogger<AuctionStatusUpdater> logger,
             IServiceScopeFactory scopeFactory,
@@ -47,7 +51,7 @@ namespace AuctionPortal.Workers
                     var invAucApp = scope.ServiceProvider.GetRequiredService<IInventoryAuctionApplication>();
                     var auctionApp = scope.ServiceProvider.GetRequiredService<IAuctionApplication>();
                     var notifApp = scope.ServiceProvider.GetRequiredService<INotificationApplication>();
-                    var adminNotifApp = scope.ServiceProvider.GetRequiredService<IAdminNotificationApplication>(); // NEW
+                    var adminNotifApp = scope.ServiceProvider.GetRequiredService<IAdminNotificationApplication>();
                     var hub = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
 
                     // 1) Recalculate auction statuses (running/ended/etc.)
@@ -57,15 +61,13 @@ namespace AuctionPortal.Workers
                         _logger.LogInformation("AuctionStatusUpdater: updated {Rows} auctions at {Local}", rows, DateTime.Now);
                     }
 
-                    // 2) Based on updated state + timebox, send auction-won / auction-lost notifications
+                    // 2) Admin lifecycle notifications (independent of favorites)
+                    await GenerateAdminLifecycleNotificationsAsync(
+                        invAucApp, auctionApp, adminNotifApp, hub, stoppingToken);
+
+                    // 3) Based on updated state + timebox, send auction-won / auction-lost (bidder) + admin sold/lost
                     await ProcessAuctionResultsAsync(
-                        auctionBidApp,
-                        invAucApp,
-                        auctionApp,
-                        notifApp,
-                        adminNotifApp,
-                        hub,
-                        stoppingToken);
+                        auctionBidApp, invAucApp, auctionApp, notifApp, adminNotifApp, hub, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -86,6 +88,76 @@ namespace AuctionPortal.Workers
         }
 
         /// <summary>
+        /// Emits admin lifecycle notifications (starting-soon/started/ending-soon/ended)
+        /// for all active lots based purely on timeboxes (no dependency on favorites).
+        /// Uses AdminNotificationHelper for broadcast; rely on DB upsert/unique key for idempotency.
+        /// </summary>
+        private static async Task GenerateAdminLifecycleNotificationsAsync(
+            IInventoryAuctionApplication invAucApp,
+            IAuctionApplication auctionApp,
+            IAdminNotificationApplication adminNotifApp,
+            IHubContext<NotificationHub> hub,
+            CancellationToken ct)
+        {
+            var nowUtc = DateTime.UtcNow;
+
+            // Expect IInventoryAuctionApplication to support GetList; pass Active=true to limit scope.
+            var lots = await invAucApp.GetList(new InventoryAuction { Active = true });
+            if (lots == null || lots.Count == 0) return;
+
+            foreach (var lot in lots)
+            {
+                if (ct.IsCancellationRequested) return;
+
+                var tb = await auctionApp.GetTimebox(new Auction { AuctionId = lot.AuctionId });
+                if (tb == null || tb.StartEpochMsUtc <= 0 || tb.EndEpochMsUtc <= 0) continue;
+
+                var startUtc = DateTimeOffset.FromUnixTimeMilliseconds(tb.StartEpochMsUtc).UtcDateTime;
+                var endUtc = DateTimeOffset.FromUnixTimeMilliseconds(tb.EndEpochMsUtc).UtcDateTime;
+
+                var auctionName = tb.AuctionName ?? "Auction";
+                var titleBase = $"{auctionName} — Lot #{lot.InventoryId}";
+
+                async Task UpsertAdminAsync(string type, string message)
+                {
+                    await AdminNotificationHelper.CreateAndBroadcastAsync(
+                        adminNotifApp,
+                        hub,
+                        type: type,
+                        title: $"{titleBase}",
+                        message: message,
+                        affectedUserId: null,
+                        auctionId: lot.AuctionId,
+                        inventoryAuctionId: lot.InventoryAuctionId);
+                }
+
+                // starting soon
+                if (nowUtc >= startUtc - StartingSoonWindow && nowUtc < startUtc)
+                {
+                    await UpsertAdminAsync("auction-starting-soon", $"{titleBase} will start soon.");
+                }
+
+                // started
+                if (nowUtc >= startUtc && nowUtc < startUtc.AddMinutes(5))
+                {
+                    await UpsertAdminAsync("auction-started", $"{titleBase} auction has started.");
+                }
+
+                // ending soon
+                if (nowUtc >= endUtc - EndingSoonWindow && nowUtc < endUtc)
+                {
+                    await UpsertAdminAsync("auction-ending-soon", $"{titleBase} will end soon.");
+                }
+
+                // ended
+                if (nowUtc >= endUtc)
+                {
+                    await UpsertAdminAsync("auction-ended", $"{titleBase} auction has ended.");
+                }
+            }
+        }
+
+        /// <summary>
         /// Finds ended lots based on auction timebox and sends:
         ///   - "auction-won" to the winning bidder
         ///   - "auction-lost" to other bidders
@@ -93,146 +165,106 @@ namespace AuctionPortal.Workers
         /// Uses dedupe via NotificationApplication to avoid duplicates to bidders.
         /// </summary>
         private static async Task ProcessAuctionResultsAsync(
-            IAuctionBidApplication auctionBidApp,
-            IInventoryAuctionApplication invAucApp,
-            IAuctionApplication auctionApp,
-            INotificationApplication notifApp,
-            IAdminNotificationApplication adminNotifApp,   // NEW
-            IHubContext<NotificationHub> hub,
-            CancellationToken ct)
+    IAuctionBidApplication auctionBidApp,
+    IInventoryAuctionApplication invAucApp,
+    IAuctionApplication auctionApp,
+    INotificationApplication notifApp,
+    IAdminNotificationApplication adminNotifApp,
+    IHubContext<NotificationHub> hub,
+    CancellationToken ct)
         {
             var nowUtc = DateTime.UtcNow;
 
-            // Get all bids (trimmed; GetList should bring AuctionId, InventoryAuctionId, BidAmount, StatusName, CreatedById, CreatedDate, Active)
-            var allBids = await auctionBidApp.GetList(new AuctionBid());
-            var activeBids = allBids.Where(b => b.Active && b.InventoryAuctionId > 0).ToList();
+            // 1. Get ALL active inventory auctions (lots)
+            var activeLots = await invAucApp.GetList(new InventoryAuction { Active = true });
+            if (activeLots?.Any() != true) return;
 
-            if (!activeBids.Any())
-                return;
-
-            // Group by lot (InventoryAuctionId)
-            var lots = activeBids
-                .GroupBy(b => b.InventoryAuctionId)
-                .ToList();
-
-            foreach (var lotGroup in lots)
+            foreach (var lot in activeLots)
             {
                 if (ct.IsCancellationRequested) return;
 
-                var sampleBid = lotGroup.First();
-                var auctionId = sampleBid.AuctionId;
-                var inventoryAuctionId = sampleBid.InventoryAuctionId;
-
-                // Load auction timebox to know if it's ended
-                var timebox = await auctionApp.GetTimebox(new Auction
-                {
-                    AuctionId = auctionId
-                });
-
-                if (timebox == null ||
-                    timebox.EndEpochMsUtc <= 0)
-                    continue;
+                var timebox = await auctionApp.GetTimebox(new Auction { AuctionId = lot.AuctionId });
+                if (timebox?.EndEpochMsUtc <= 0) continue;
 
                 var endUtc = DateTimeOffset.FromUnixTimeMilliseconds(timebox.EndEpochMsUtc).UtcDateTime;
-                if (nowUtc < endUtc)
-                {
-                    // auction not ended yet; skip this lot
-                    continue;
-                }
-
-                // Load InventoryAuction for title (Lot #)
-                var invAuc = await invAucApp.Get(new InventoryAuction
-                {
-                    InventoryAuctionId = inventoryAuctionId
-                });
-
-                if (invAuc == null)
-                    continue;
+                if (nowUtc < endUtc) continue; // not ended yet
 
                 var auctionName = timebox.AuctionName ?? "Auction";
-                var titleBase = $"{auctionName} — Lot #{invAuc.InventoryId}";
+                var titleBase = $"{auctionName} — Lot #{lot.InventoryId}";
 
-                // Determine winner:
-                // 1) Prefer explicit "Won" status if your SP sets it
-                var winningBid = lotGroup
-                    .Where(b =>
-                        string.Equals(b.AuctionBidStatusName ?? string.Empty,
-                                      "Won",
-                                      StringComparison.OrdinalIgnoreCase))
+                // 2. Get all bids for this lot (active or not — winner might be inactive now)
+                var allBidsForLot = await auctionBidApp.GetList(new AuctionBid
+                {
+                    InventoryAuctionId = lot.InventoryAuctionId
+                });
+
+                var winningBid = allBidsForLot
+                    .Where(b => b.AuctionBidStatusName?.Equals("Won", StringComparison.OrdinalIgnoreCase) == true)
                     .OrderByDescending(b => b.CreatedDate ?? DateTime.MinValue)
                     .ThenByDescending(b => b.AuctionBidId)
-                    .FirstOrDefault();
-
-                // 2) Fallback: highest amount / latest bid
-                if (winningBid == null)
-                {
-                    winningBid = lotGroup
+                    .FirstOrDefault()
+                    ?? allBidsForLot
                         .OrderByDescending(b => b.BidAmount)
                         .ThenByDescending(b => b.CreatedDate ?? DateTime.MinValue)
                         .ThenByDescending(b => b.AuctionBidId)
                         .FirstOrDefault();
-                }
 
-                if (winningBid == null || !winningBid.CreatedById.HasValue)
-                    continue;
+                bool hasBids = allBidsForLot.Any();
+                bool hasWinner = winningBid != null && winningBid.CreatedById.HasValue;
 
-                var winnerUserId = winningBid.CreatedById.Value;
+                var adminType = hasWinner ? "inventory-sold" : "inventory-lost";
+                var adminTitle = hasWinner ? $"{titleBase} — Sold" : $"{titleBase} — No sale";
+                var adminMessage = hasWinner
+                    ? $"Lot sold: {titleBase}. Winner: User #{winningBid.CreatedById}, amount: {winningBid.BidAmount:N2}."
+                    : hasBids
+                        ? $"Lot ended without sale: {titleBase}. Reserve not met or no winning bid."
+                        : $"Lot ended with no bids: {titleBase}.";
 
-                // losers = all other users who placed at least one bid on this lot
-                var losingUsers = lotGroup
-                    .Where(b => b.CreatedById.HasValue && b.CreatedById.Value != winnerUserId)
-                    .GroupBy(b => b.CreatedById!.Value)
-                    .Select(g => new
-                    {
-                        UserId = g.Key,
-                        // last bid from this user (mainly for message context if needed later)
-                        LastBid = g
-                            .OrderByDescending(b => b.CreatedDate ?? DateTime.MinValue)
-                            .ThenByDescending(b => b.AuctionBidId)
-                            .First()
-                    })
-                    .ToList();
-
-                // 1) Notify winner: "auction-won" (bidder) + admin "inventory-sold"
-                await SendResultNotificationAsync(
-                    notifApp,
+                // Broadcast admin notification (idempotent via helper)
+                await AdminNotificationHelper.CreateAndBroadcastAsync(
                     adminNotifApp,
                     hub,
-                    userId: winnerUserId,
-                    auctionId: auctionId,
-                    inventoryAuctionId: inventoryAuctionId,
-                    titleBase: titleBase,
-                    isWinner: true,
-                    winningAmount: winningBid.BidAmount,
-                    ct: ct);
+                    type: adminType,
+                    title: adminTitle,
+                    message: adminMessage,
+                    affectedUserId: hasWinner ? winningBid.CreatedById : null,
+                    auctionId: lot.AuctionId,
+                    inventoryAuctionId: lot.InventoryAuctionId);
 
-                // 2) Notify losers: "auction-lost" (bidder) + admin "inventory-lost"
-                foreach (var loser in losingUsers)
+                // 3. Now send user notifications only if there are bids
+                if (!hasBids) continue;
+
+                var winnerUserId = hasWinner ? winningBid.CreatedById.Value : (int?)null;
+                var bidderUserIds = allBidsForLot
+                    .Where(b => b.CreatedById.HasValue)
+                    .Select(b => b.CreatedById.Value)
+                    .Distinct()
+                    .ToList();
+
+                foreach (var bidderId in bidderUserIds)
                 {
                     if (ct.IsCancellationRequested) return;
 
+                    bool isWinner = winnerUserId.HasValue && bidderId == winnerUserId;
                     await SendResultNotificationAsync(
-                        notifApp,
-                        adminNotifApp,
-                        hub,
-                        userId: loser.UserId,
-                        auctionId: auctionId,
-                        inventoryAuctionId: inventoryAuctionId,
+                        notifApp, adminNotifApp, hub,
+                        userId: bidderId,
+                        auctionId: lot.AuctionId,
+                        inventoryAuctionId: lot.InventoryAuctionId,
                         titleBase: titleBase,
-                        isWinner: false,
-                        winningAmount: winningBid.BidAmount,
+                        isWinner: isWinner,
+                        winningAmount: winningBid?.BidAmount ?? 0m,
                         ct: ct);
                 }
             }
         }
-
         /// <summary>
         /// Dedupe + create + push 'auction-won' / 'auction-lost' notification for a user,
         /// and creates/broadcasts admin notification ("inventory-sold"/"inventory-lost").
         /// </summary>
         private static async Task SendResultNotificationAsync(
             INotificationApplication notifApp,
-            IAdminNotificationApplication adminNotifApp,   // NEW
+            IAdminNotificationApplication adminNotifApp,
             IHubContext<NotificationHub> hub,
             int userId,
             int auctionId,
@@ -246,7 +278,6 @@ namespace AuctionPortal.Workers
 
             var type = isWinner ? "auction-won" : "auction-lost";
 
-            // Dedupe: check if we've already sent this type for this user + lot
             var existing = await notifApp.GetForUser(userId, unreadOnly: false, top: 200);
             var alreadyHas = existing.Any(n =>
                 string.Equals(n.Type, type, StringComparison.OrdinalIgnoreCase) &&
@@ -256,19 +287,10 @@ namespace AuctionPortal.Workers
             if (alreadyHas)
                 return;
 
-            string title;
-            string message;
-
-            if (isWinner)
-            {
-                title = $"{titleBase} — You won";
-                message = $"Congratulations! You have won {titleBase} with a final bid of {winningAmount:N2}.";
-            }
-            else
-            {
-                title = $"{titleBase} — Auction ended";
-                message = $"The auction for {titleBase} has ended. Your bid was not the winning bid (final winning amount: {winningAmount:N2}).";
-            }
+            string title = isWinner ? $"{titleBase} — You won" : $"{titleBase} — Auction ended";
+            string message = isWinner
+                ? $"Congratulations! You have won {titleBase} with a final bid of {winningAmount:N2}."
+                : $"The auction for {titleBase} has ended. Your bid was not the winning bid (final winning amount: {winningAmount:N2}).";
 
             var notification = new Notification
             {
@@ -282,19 +304,14 @@ namespace AuctionPortal.Workers
                 InventoryAuctionId = inventoryAuctionId
             };
 
-            // Persist + push to bidder
             await notifApp.Add(notification);
 
             await hub.Clients
                 .User(userId.ToString())
                 .SendAsync("NotificationCreated", notification);
 
-            // --- Admin notification counterpart ---
             var adminType = isWinner ? "inventory-sold" : "inventory-lost";
-            var adminTitle = isWinner
-                ? $"{titleBase} — Sold"
-                : $"{titleBase} — Auction ended";
-
+            var adminTitle = isWinner ? $"{titleBase} — Sold" : $"{titleBase} — Auction ended";
             var adminMessage = isWinner
                 ? $"Lot sold: {titleBase}. Winning bidder #{userId}, amount {winningAmount:N2}."
                 : $"Lot ended: {titleBase}. Bidder #{userId} did not win (final {winningAmount:N2}).";

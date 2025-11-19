@@ -14,9 +14,7 @@ namespace AuctionPortal.Controllers
     public class BiddersController : APIBaseController
     {
         #region Constructor
-        /// <summary>
-        /// BiddersController initializes class object.
-        /// </summary>
+
         public BiddersController(
             IBidderApplication bidderApplication,
             IHeaderValue headerValue,
@@ -43,7 +41,7 @@ namespace AuctionPortal.Controllers
         {
             var bidderId = await BidderApplication.Add(bidder);
 
-            // Admin notification: new bidder registered
+            
             if (bidderId > 0)
             {
                 var title = "New bidder registered";

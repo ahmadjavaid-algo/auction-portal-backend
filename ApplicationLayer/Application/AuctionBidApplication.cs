@@ -52,11 +52,7 @@ namespace AuctionPortal.ApplicationLayer.Application
         #region Commands
 
         /// <summary>
-        /// Places a bid and performs all related orchestration:
-        /// - finds previous winning bid (if any)
-        /// - inserts the new bid
-        /// - sends bid-winning / bid-outbid notifications via SignalR.
-        /// Controller must set CreatedById on the entity before calling this.
+        /// Places a bid and performs all related operations
         /// </summary>
         public async Task<int> Add(AuctionBid entity)
         {
@@ -165,7 +161,7 @@ namespace AuctionPortal.ApplicationLayer.Application
 
             status = status.Trim();
 
-            // notify previous winner
+            
             if (previousWinningBid != null &&
                 previousWinningBid.CreatedById.HasValue &&
                 previousWinningBid.CreatedById.Value != (newBid.CreatedById ?? 0) &&
@@ -197,7 +193,7 @@ namespace AuctionPortal.ApplicationLayer.Application
                 }
             }
 
-            // notify current winning bidder
+            
             if (status.Equals("Winning", StringComparison.OrdinalIgnoreCase) &&
                 newBid.CreatedById.HasValue)
             {

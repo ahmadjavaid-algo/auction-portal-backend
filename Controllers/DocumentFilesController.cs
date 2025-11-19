@@ -15,9 +15,7 @@ namespace DocumentFilePortal.Controllers
     public class DocumentFilesController : APIBaseController
     {
         #region Constructor
-        /// <summary>
-        /// DocumentFilesController initializes class object.
-        /// </summary>
+
         public DocumentFilesController(IDocumentFileApplication DocumentFileApplication, IHeaderValue headerValue, IConfiguration configuration)
             : base(headerValue, configuration)
         {
@@ -42,14 +40,14 @@ namespace DocumentFilePortal.Controllers
         if (file == null || file.Length == 0)
             throw new ArgumentException("No file provided.");
 
-        // 1) Ensure upload folder exists
+     
         var webRoot = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
         var uploadDir = Path.Combine(webRoot, "uploads");
         if (!Directory.Exists(uploadDir)) Directory.CreateDirectory(uploadDir);
 
-        // 2) Build a safe unique name
+      
         var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-        // (optional) simple allow-list
+        
         var allowed = new[] { ".pdf", ".jpg", ".jpeg", ".png", ".docx" };
         if (string.IsNullOrWhiteSpace(ext) || Array.IndexOf(allowed, ext) < 0)
             throw new InvalidOperationException("File type not allowed.");
@@ -60,18 +58,18 @@ namespace DocumentFilePortal.Controllers
         var safeBase = baseName.Replace(" ", "_");
         var uniqueName = $"{safeBase}_{Guid.NewGuid():N}{ext}";
 
-        // 3) Save file to disk
+       
         var fullPath = Path.Combine(uploadDir, uniqueName);
         await using (var fs = System.IO.File.Create(fullPath))
         {
             await file.CopyToAsync(fs);
         }
 
-        // 4) Build public URL (served by StaticFiles middleware)
+       
         var baseUrl = $"{Request.Scheme}://{Request.Host}";
         var publicUrl = $"{baseUrl}/uploads/{uniqueName}";
 
-        // 5) Insert metadata via Application (calls SP)
+        
         var model = new DocumentFile
         {
             DocumentName = baseName,

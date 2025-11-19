@@ -20,7 +20,6 @@ namespace AuctionPortal.Workers
         private readonly IServiceScopeFactory _scopeFactory;
         private readonly TimeSpan _interval;
 
-        // tweak windows as desired
         private static readonly TimeSpan StartingSoonWindow = TimeSpan.FromMinutes(15);
         private static readonly TimeSpan EndingSoonWindow = TimeSpan.FromMinutes(10);
 
@@ -50,10 +49,9 @@ namespace AuctionPortal.Workers
                     var invAucApp = scope.ServiceProvider.GetRequiredService<IInventoryAuctionApplication>();
                     var auctionApp = scope.ServiceProvider.GetRequiredService<IAuctionApplication>();
                     var notifApp = scope.ServiceProvider.GetRequiredService<INotificationApplication>();
-                    var adminNotifApp = scope.ServiceProvider.GetRequiredService<IAdminNotificationApplication>(); // NEW
                     var hub = scope.ServiceProvider.GetRequiredService<IHubContext<NotificationHub>>();
 
-                    await ProcessAsync(favApp, invAucApp, auctionApp, notifApp, adminNotifApp, hub, stoppingToken);
+                    await ProcessAsync(favApp, invAucApp, auctionApp, notifApp, hub, stoppingToken);
                 }
                 catch (Exception ex)
                 {
@@ -75,7 +73,6 @@ namespace AuctionPortal.Workers
             IInventoryAuctionApplication invAucApp,
             IAuctionApplication auctionApp,
             INotificationApplication notifApp,
-            IAdminNotificationApplication adminNotifApp, // NEW
             IHubContext<NotificationHub> hub,
             CancellationToken ct)
         {
@@ -87,7 +84,6 @@ namespace AuctionPortal.Workers
 
             var nowUtc = DateTime.UtcNow;
 
-            // group by user so we only load notifications per user once
             var favsByUser = activeFavs.GroupBy(f => f.UserId);
 
             foreach (var userGroup in favsByUser)
@@ -95,15 +91,12 @@ namespace AuctionPortal.Workers
                 if (ct.IsCancellationRequested) return;
 
                 var userId = userGroup.Key;
-
-                // load recent notifications for dedupe
                 var existing = await notifApp.GetForUser(userId, unreadOnly: false, top: 200);
 
                 foreach (var fav in userGroup)
                 {
                     if (ct.IsCancellationRequested) return;
 
-                    // load inventory-auction (lot)
                     var invAuc = await invAucApp.Get(new InventoryAuction
                     {
                         InventoryAuctionId = fav.InventoryAuctionId
@@ -140,7 +133,7 @@ namespace AuctionPortal.Workers
                         nowUtc < startUtc)
                     {
                         await CreateAndPushAsync(
-                            notifApp, adminNotifApp, hub, userId,
+                            notifApp, hub, userId,
                             type: "auction-starting-soon",
                             title: $"{titleBase} starting soon",
                             message: $"{titleBase} will start soon.",
@@ -154,7 +147,7 @@ namespace AuctionPortal.Workers
                         nowUtc < startUtc.AddMinutes(5))
                     {
                         await CreateAndPushAsync(
-                            notifApp, adminNotifApp, hub, userId,
+                            notifApp, hub, userId,
                             type: "auction-started",
                             title: $"{titleBase} is now live",
                             message: $"{titleBase} auction has started.",
@@ -168,7 +161,7 @@ namespace AuctionPortal.Workers
                         nowUtc < endUtc)
                     {
                         await CreateAndPushAsync(
-                            notifApp, adminNotifApp, hub, userId,
+                            notifApp, hub, userId,
                             type: "auction-ending-soon",
                             title: $"{titleBase} ending soon",
                             message: $"{titleBase} will end soon. Place your final bids.",
@@ -181,7 +174,7 @@ namespace AuctionPortal.Workers
                         nowUtc >= endUtc)
                     {
                         await CreateAndPushAsync(
-                            notifApp, adminNotifApp, hub, userId,
+                            notifApp, hub, userId,
                             type: "auction-ended",
                             title: $"{titleBase} ended",
                             message: $"{titleBase} auction has ended.",
@@ -194,7 +187,6 @@ namespace AuctionPortal.Workers
 
         private static async Task CreateAndPushAsync(
             INotificationApplication notifApp,
-            IAdminNotificationApplication adminNotifApp,          // NEW
             IHubContext<NotificationHub> hub,
             int userId,
             string type,
@@ -203,7 +195,6 @@ namespace AuctionPortal.Workers
             int auctionId,
             int inventoryAuctionId)
         {
-            // Bidder notification
             var notification = new Notification
             {
                 UserId = userId,
@@ -218,21 +209,9 @@ namespace AuctionPortal.Workers
 
             await notifApp.Add(notification);
 
-            // Generic SignalR event for bidder client
             await hub.Clients
                 .User(userId.ToString())
                 .SendAsync("NotificationCreated", notification);
-
-            // Admin global notification
-            await AdminNotificationHelper.CreateAndBroadcastAsync(
-                adminNotifApp,
-                hub,
-                type: type,                     // reuse same type
-                title: title,
-                message: message,
-                affectedUserId: userId,
-                auctionId: auctionId,
-                inventoryAuctionId: inventoryAuctionId);
         }
     }
 }

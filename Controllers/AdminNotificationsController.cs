@@ -1,4 +1,4 @@
-// AuctionPortal.Controllers/AdminNotificationsController.cs
+
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AuctionPortal.ApplicationLayer.IApplication;
@@ -24,10 +24,7 @@ namespace AuctionPortal.Controllers
             AdminNotificationApplication = adminNotificationApplication;
         }
 
-        /// <summary>
-        /// Returns admin notifications (global; optionally unread-only).
-        /// GET /api/AdminNotifications/list?unreadOnly=true&top=50
-        /// </summary>
+
         [HttpGet("list")]
         public async Task<List<AdminNotification>> GetList(
             [FromQuery] bool unreadOnly = false,
@@ -36,10 +33,7 @@ namespace AuctionPortal.Controllers
             return await AdminNotificationApplication.GetList(unreadOnly, top);
         }
 
-        /// <summary>
-        /// Marks all admin notifications as read and returns the updated list.
-        /// POST /api/AdminNotifications/mark-all-read
-        /// </summary>
+
         [HttpPost("mark-all-read")]
         public async Task<List<AdminNotification>> MarkAllRead()
         {
@@ -47,10 +41,7 @@ namespace AuctionPortal.Controllers
             return updated;
         }
 
-        /// <summary>
-        /// Clears (soft-deletes) all admin notifications and returns remaining (usually empty).
-        /// POST /api/AdminNotifications/clear-all
-        /// </summary>
+
         [HttpPost("clear-all")]
         public async Task<List<AdminNotification>> ClearAll()
         {

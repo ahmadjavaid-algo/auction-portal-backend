@@ -12,14 +12,11 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace AuctionPortal.Controllers
 {
-    [Authorize]
+    
     public class AuctionBidsController : APIBaseController
     {
         #region Constructor
 
-        /// <summary>
-        /// AuctionBidsController initializes class object.
-        /// </summary>
         public AuctionBidsController(
             IAuctionBidApplication AuctionBidApplication,
             IHeaderValue headerValue,
@@ -61,7 +58,7 @@ namespace AuctionPortal.Controllers
                 return 0;
             }
 
-            // controller only sets caller context, then delegates to application
+            
             AuctionBid.CreatedById = userId;
 
             var newId = await AuctionBidApplication.Add(AuctionBid);

@@ -27,9 +27,7 @@ namespace AuctionPortal.Common.Services
             return CreateToken(userId, userName, email, Array.Empty<string>());
         }
 
-        /// <summary>
-        /// Creates a JWT that embeds permissions as claims. No permissions are returned in the response DTO.
-        /// </summary>
+     
         public string CreateToken(int userId, string userName, string? email, IEnumerable<string>? permissions)
         {
             var creds = _base.GetSigningCredentials();
@@ -37,7 +35,7 @@ namespace AuctionPortal.Common.Services
 
             var claims = new List<Claim>
             {
-                // Must match middleware expectation (e.g., "UserId")
+                
                 new Claim(ClaimsConstants.UserIdClaimType, userId.ToString()),
                 new Claim(ClaimTypes.Name, userName ?? string.Empty)
             };
@@ -45,7 +43,7 @@ namespace AuctionPortal.Common.Services
             if (!string.IsNullOrWhiteSpace(email))
                 claims.Add(new Claim(ClaimTypes.Email, email));
 
-            // Embed each permission as its own claim (e.g., type = "perm")
+            
             if (permissions != null)
             {
                 foreach (var p in permissions

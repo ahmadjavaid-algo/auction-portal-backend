@@ -4,10 +4,7 @@ using AuctionPortal.Models;
 
 namespace AuctionPortal.ApplicationLayer.IApplication
 {
-    /// <summary>
-    /// Application interface for admin (global) notifications.
-    /// Note: does NOT inherit IBaseApplication – it mirrors INotificationApplication.
-    /// </summary>
+
     public interface IAdminNotificationApplication
     {
         Task<int> Add(AdminNotification entity);
