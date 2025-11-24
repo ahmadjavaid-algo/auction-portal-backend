@@ -211,6 +211,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                             UserName = dataReader.GetStringValue(UserInfrastructure.UserNameColumnName),
                             FirstName = dataReader.GetStringValue(UserInfrastructure.FirstNameColumnName),
                             Email = dataReader.GetStringValue(UserInfrastructure.EmailColumnName),
+                            PhoneNumber = dataReader.GetStringValue(PhoneNumberColumnName),
                             EmailConfirmed = dataReader.GetBooleanValue(UserInfrastructure.EmailConfirmedColumnName), // NEW
                             LoginDate = dataReader.GetDateTimeValueNullable(UserInfrastructure.LoginDateColumnName), // NEW
                             Active = dataReader.GetBooleanValue(BaseInfrastructure.ActiveColumnName),         // NEW

@@ -89,7 +89,7 @@ builder.Services.AddScoped<IFavouriteInfrastructure, FavouriteInfrastructure>();
 builder.Services.AddScoped<INotificationInfrastructure, NotificationInfrastructure>();
 builder.Services.AddScoped<IAuctionBidInfrastructure, AuctionBidInfrastructure>();
 builder.Services.AddScoped<IAdminNotificationInfrastructure, AdminNotificationInfrastructure>();
-
+builder.Services.AddScoped<IDashboardInfrastructure, DashboardInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -112,6 +112,7 @@ builder.Services.AddScoped<IFavouriteApplication, FavouriteApplication>();
 builder.Services.AddScoped<INotificationApplication, NotificationApplication>();
 builder.Services.AddScoped<IAuctionBidApplication, AuctionBidApplication>();
 builder.Services.AddScoped<IAdminNotificationApplication, AdminNotificationApplication>();
+builder.Services.AddScoped<IDashboardApplication, DashboardApplication>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
