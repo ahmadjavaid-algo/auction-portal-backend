@@ -90,6 +90,10 @@ builder.Services.AddScoped<INotificationInfrastructure, NotificationInfrastructu
 builder.Services.AddScoped<IAuctionBidInfrastructure, AuctionBidInfrastructure>();
 builder.Services.AddScoped<IAdminNotificationInfrastructure, AdminNotificationInfrastructure>();
 builder.Services.AddScoped<IDashboardInfrastructure, DashboardInfrastructure>();
+builder.Services.AddScoped<IInspectorInfrastructure, InspectorInfrastructure>();
+builder.Services.AddScoped<IInspectionTypeInfrastructure, InspectionTypeInfrastructure>();
+builder.Services.AddScoped<IInspectionCheckpointInfrastructure, InspectionCheckpointInfrastructure>();
+builder.Services.AddScoped<IInventoryInspectorInfrastructure, InventoryInspectorInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -113,6 +117,10 @@ builder.Services.AddScoped<INotificationApplication, NotificationApplication>();
 builder.Services.AddScoped<IAuctionBidApplication, AuctionBidApplication>();
 builder.Services.AddScoped<IAdminNotificationApplication, AdminNotificationApplication>();
 builder.Services.AddScoped<IDashboardApplication, DashboardApplication>();
+builder.Services.AddScoped<IInspectorApplication, InspectorApplication>();
+builder.Services.AddScoped<IInspectionTypeApplication, InspectionTypeApplication>();
+builder.Services.AddScoped<IInspectionCheckpointApplication, InspectionCheckpointApplication>();
+builder.Services.AddScoped<IInventoryInspectorApplication, InventoryInspectorApplication>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
