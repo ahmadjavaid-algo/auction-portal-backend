@@ -95,6 +95,7 @@ builder.Services.AddScoped<IInspectionTypeInfrastructure, InspectionTypeInfrastr
 builder.Services.AddScoped<IInspectionCheckpointInfrastructure, InspectionCheckpointInfrastructure>();
 builder.Services.AddScoped<IInventoryInspectorInfrastructure, InventoryInspectorInfrastructure>();
 builder.Services.AddScoped<IInspectorOperationInfrastructure, InspectorOperationInfrastructure>();
+builder.Services.AddScoped<IInspectionInfrastructure, InspectionInfrastructure>();
 // Application layer
 builder.Services.AddScoped<IUserApplication, UserApplication>();
 builder.Services.AddScoped<IRoleApplication, RoleApplication>();
@@ -123,6 +124,7 @@ builder.Services.AddScoped<IInspectionTypeApplication, InspectionTypeApplication
 builder.Services.AddScoped<IInspectionCheckpointApplication, InspectionCheckpointApplication>();
 builder.Services.AddScoped<IInventoryInspectorApplication, InventoryInspectorApplication>();
 builder.Services.AddScoped<IInspectorOperationApplication, InspectorOperationApplication>();
+builder.Services.AddScoped<IInspectionApplication, InspectionApplication>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
