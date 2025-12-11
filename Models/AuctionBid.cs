@@ -16,5 +16,9 @@ namespace AuctionPortal.Models
         public decimal BidAmount { get; set; }
 
         public string? AuctionBidStatusName { get; set; }
+
+        public bool IsAutoBid { get; set; }    
+        
+        public int? AutoBidAmount { get; set; }
     }
 }

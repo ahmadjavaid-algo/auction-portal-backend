@@ -47,6 +47,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string BidAmountColumnName = "BidAmount";
         private const string AuctionBidStatusNameColumn = "AuctionBidStatusName";
 
+       
+        private const string IsAutoBidColumnName = "IsAutoBid";
+        private const string AutoBidAmountColumnName = "AutoBidAmount";
+
         #endregion
 
         #region Constants – parameter names
@@ -59,16 +63,15 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string CreatedByIdParameterName = "@CreatedById";
         private const string ModifiedByIdParameterName = "@ModifiedById";
 
+        private const string IsAutoBidParameterName = "@IsAutoBid";
+        private const string AutoBidAmountParameterName = "@AutoBidAmount";
+
         #endregion
 
         #region IAuctionBidInfrastructure implementation
 
         /// <summary>
         /// Add inserts a new AuctionBid row and returns the generated AuctionBidId.
-        /// The SP is responsible for setting the correct AuctionBidStatusId:
-        /// - first bid = "Winning"
-        /// - previous winning bids = "Outbid"
-        /// - etc.
         /// </summary>
         public async Task<int> Add(AuctionBid bid)
         {
@@ -77,7 +80,16 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                 base.GetParameter(AuctionIdParameterName,          bid.AuctionId),
                 base.GetParameter(InventoryAuctionIdParameterName, bid.InventoryAuctionId),
                 base.GetParameter(BidAmountParameterName,          bid.BidAmount),
-                base.GetParameter(CreatedByIdParameterName,        bid.CreatedById)
+                base.GetParameter(CreatedByIdParameterName,        bid.CreatedById),
+
+              
+                base.GetParameter(IsAutoBidParameterName,          bid.IsAutoBid),
+
+                base.GetParameter(
+                    AutoBidAmountParameterName,
+                    bid.AutoBidAmount.HasValue && bid.AutoBidAmount.Value > 0
+                        ? (object)bid.AutoBidAmount.Value
+                        : DBNull.Value)
             };
 
             using (var reader = await base.ExecuteReader(parameters, AddStoredProcedureName, CommandType.StoredProcedure))
@@ -91,6 +103,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
                     bid.BidAmount = reader.GetDecimalValue(BidAmountColumnName);
 
                     bid.AuctionBidStatusName = reader.GetStringValue(AuctionBidStatusNameColumn);
+
+                   
+                    bid.IsAutoBid = reader.GetBooleanValue(IsAutoBidColumnName);
+                    bid.AutoBidAmount = reader.GetIntegerValueNullable(AutoBidAmountColumnName);
 
                     bid.CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName);
                     bid.CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName);
@@ -113,9 +129,9 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         {
             var parameters = new List<DbParameter>
             {
-                base.GetParameter(AuctionBidIdParameterName,       bid.AuctionBidId),
+                base.GetParameter(AuctionBidIdParameterName,            bid.AuctionBidId),
                 base.GetParameter(BaseInfrastructure.ActiveParameterName, bid.Active),
-                base.GetParameter(ModifiedByIdParameterName,       bid.ModifiedById)
+                base.GetParameter(ModifiedByIdParameterName,            bid.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, ActivateStoredProcedureName, CommandType.StoredProcedure);
@@ -148,6 +164,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
                         AuctionBidStatusName = reader.GetStringValue(AuctionBidStatusNameColumn),
 
+                       
+                        IsAutoBid = reader.GetBooleanValue(IsAutoBidColumnName),
+                        AutoBidAmount = reader.GetIntegerValueNullable(AutoBidAmountColumnName),
+
                         CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
                         CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
                         ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
@@ -164,9 +184,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         }
 
         /// <summary>
-        /// GetList fetches and returns a list of bids (trimmed columns, ordered by CreatedDate desc).
+        /// GetList fetches and returns a list of bids.
         /// </summary>
-
         public async Task<List<AuctionBid>> GetList(AuctionBid _)
         {
             var items = new List<AuctionBid>();
@@ -188,7 +207,10 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
                             AuctionBidStatusName = reader.GetStringValue(AuctionBidStatusNameColumn),
 
-                            // ⬇⬇ pull audit fields so controller can see who placed the bid
+                            
+                            IsAutoBid = reader.GetBooleanValue(IsAutoBidColumnName),
+                            AutoBidAmount = reader.GetIntegerValueNullable(AutoBidAmountColumnName),
+
                             CreatedById = reader.GetIntegerValueNullable(BaseInfrastructure.CreatedByIdColumnName),
                             CreatedDate = reader.GetDateTimeValueNullable(BaseInfrastructure.CreatedDateColumnName),
                             ModifiedById = reader.GetIntegerValueNullable(BaseInfrastructure.ModifiedByIdColumnName) ?? 0,
@@ -207,10 +229,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             return items;
         }
 
-
         /// <summary>
         /// Update updates an existing bid and returns true if successful.
-        /// Status transitions (Outbid/Winning/Lost/Won) are handled inside the SP.
         /// </summary>
         public async Task<bool> Update(AuctionBid bid)
         {
@@ -218,19 +238,25 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             {
                 base.GetParameter(AuctionBidIdParameterName, bid.AuctionBidId),
 
-                base.GetParameter(AuctionIdParameterName,
+                base.GetParameter(
+                    AuctionIdParameterName,
                     bid.AuctionId > 0 ? (object)bid.AuctionId : DBNull.Value),
 
-                base.GetParameter(InventoryAuctionIdParameterName,
+                base.GetParameter(
+                    InventoryAuctionIdParameterName,
                     bid.InventoryAuctionId > 0 ? (object)bid.InventoryAuctionId : DBNull.Value),
 
-                base.GetParameter(AuctionBidStatusIdParameterName,
+                base.GetParameter(
+                    AuctionBidStatusIdParameterName,
                     bid.AuctionBidStatusId > 0 ? (object)bid.AuctionBidStatusId : DBNull.Value),
 
-                base.GetParameter(BidAmountParameterName,
+                base.GetParameter(
+                    BidAmountParameterName,
                     bid.BidAmount >= 0 ? (object)bid.BidAmount : DBNull.Value),
 
                 base.GetParameter(ModifiedByIdParameterName, bid.ModifiedById)
+
+
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);
