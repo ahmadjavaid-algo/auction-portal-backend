@@ -38,7 +38,9 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string ChassisNoColumnName = "ChassisNo";
         private const string RegistrationNoColumnName = "RegistrationNo";
         private const string DocumentUrlColumnName = "DocumentUrl";
+        private const string DocumentThumbnailUrlColumnName = "DocumentThumbnailUrl";
         private const string DocumentExtensionColumnName = "DocumentExtension";
+
         // Parameters
         private const string InventoryDocumentFileIdParameterName = "@InventoryDocumentFileId";
         private const string DocumentFileIdParameterName = "@DocumentFileId";
@@ -46,7 +48,6 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
         private const string DocumentDisplayNameParameterName = "@DocumentDisplayName";
         private const string CreatedByIdParameterName = "@CreatedById";
         private const string ModifiedByIdParameterName = "@ModifiedById";
-
         #endregion
 
         #region IInventoryDocumentFileInfrastructure Implementation
@@ -97,7 +98,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             {
                 base.GetParameter(InventoryDocumentFileIdParameterName, entity.InventoryDocumentFileId),
                 base.GetParameter(BaseInfrastructure.ActiveParameterName, entity.Active),
-                base.GetParameter(ModifiedByIdParameterName, entity.ModifiedById)
+                base.GetParameter(ModifiedByIdParameterName,              entity.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, ActivateStoredProcedureName, CommandType.StoredProcedure);
@@ -144,7 +145,7 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
         /// <summary>
         /// Get list of InventoryDocumentFile (trimmed cols).
-        /// SP joins DocumentFile to include DocumentName (like Inventory_GetAll includes Product.DisplayName).
+        /// SP joins DocumentFile to include DocumentName + URLs.
         /// </summary>
         public async Task<List<InventoryDocumentFile>> GetList(InventoryDocumentFile entity)
         {
@@ -166,7 +167,8 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
 
                             // Optional joined projections (safe reads)
                             DocumentName = reader.GetStringValue(DocumentNameColumnName),
-                            DocumentUrl = reader.GetStringValue(DocumentUrlColumnName),        
+                            DocumentUrl = reader.GetStringValue(DocumentUrlColumnName),
+                            DocumentThumbnailUrl = reader.GetStringValue(DocumentThumbnailUrlColumnName),
                             DocumentExtension = reader.GetStringValue(DocumentExtensionColumnName),
 
                             Active = reader.GetBooleanValue(BaseInfrastructure.ActiveColumnName)
@@ -191,11 +193,11 @@ namespace AuctionPortal.InfrastructureLayer.Infrastructure
             {
                 base.GetParameter(InventoryDocumentFileIdParameterName, entity.InventoryDocumentFileId),
 
-                base.GetParameter(DocumentFileIdParameterName,          entity.DocumentFileId  > 0 ? (object)entity.DocumentFileId  : DBNull.Value),
-                base.GetParameter(InventoryIdParameterName,             entity.InventoryId     > 0 ? (object)entity.InventoryId     : DBNull.Value),
-                base.GetParameter(DocumentDisplayNameParameterName,     (object?)entity.DocumentDisplayName ?? DBNull.Value),
+                base.GetParameter(DocumentFileIdParameterName,      entity.DocumentFileId  > 0 ? (object)entity.DocumentFileId  : DBNull.Value),
+                base.GetParameter(InventoryIdParameterName,         entity.InventoryId     > 0 ? (object)entity.InventoryId     : DBNull.Value),
+                base.GetParameter(DocumentDisplayNameParameterName, (object?)entity.DocumentDisplayName ?? DBNull.Value),
 
-                base.GetParameter(ModifiedByIdParameterName,            entity.ModifiedById)
+                base.GetParameter(ModifiedByIdParameterName,        entity.ModifiedById)
             };
 
             var rows = await base.ExecuteNonQuery(parameters, UpdateStoredProcedureName, CommandType.StoredProcedure);

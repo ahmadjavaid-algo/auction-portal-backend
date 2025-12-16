@@ -14,7 +14,7 @@ namespace AuctionPortal.Models
         public int InventoryId { get; set; }
 
         public string? DocumentDisplayName { get; set; }
-
+        public string? DocumentThumbnailUrl { get; set; }
         public string? DocumentName { get; set; }
         public string? DocumentUrl { get; set; }        
         public string? DocumentExtension { get; set; }
